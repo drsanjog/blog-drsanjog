@@ -57,11 +57,11 @@ Instagram: @drsanjog.sharma
 STRATEGIC POSITIONING
 ═══════════════════════════════════════
 
-Dr. Sharma is an internationally practising plastic surgeon primarily based in Dubai, where he performs the majority of his body contouring work at three leading hospitals. He visits Bengaluru on a selective basis for suitable patients who seek Gulf-standard surgical care in India.
+Dr. Sharma is an internationally practising plastic surgeon based in Dubai, where he performs body contouring work at three leading hospitals. He is also available in Bengaluru, operating at Aesthetica Veda Clinic, Whitefield — giving patients in South India direct access to the same surgical standards and protocols he applies in Dubai.
 
-Blog angle: An internationally trained surgeon bringing Dubai-level surgical standards to selected patients in Bengaluru. This positioning should feel earned and natural — not promotional.
+Blog angle: An international surgeon who does high-quality body contouring work in Bangalore. Patients don't need to travel abroad to access Dubai-level surgical standards — he is here. This positioning should feel earned and natural — not promotional.
 
-The reader in Bengaluru should come away thinking: "This is a surgeon who operates at the highest international standard in Dubai and occasionally takes on cases here. That's who I want."
+The reader in Bengaluru should come away thinking: "This is a surgeon operating at international standard in Dubai who is available right here in Bangalore. That's exactly who I want."
 
 ═══════════════════════════════════════
 ARTICLE ARCHETYPES — ROTATE THROUGH THESE
@@ -114,7 +114,7 @@ Each article should naturally mention BOTH practice locations:
 - Dubai: name at least one of the three hospitals (Cocoona / Emirates Hospital / Dubai London Hospital) in a clinical context
 - Bengaluru: mention "Whitefield clinic", "Aesthetica Veda", or "my Bengaluru practice" in a relevant passage
 
-The dual-practice pivot (explicitly connecting Dubai → Bengaluru) should appear at most ONCE per article, naturally placed. Example: "Patients in Bengaluru increasingly reach me having first explored options in Dubai, or having seen my work there — the cases I select for Bengaluru follow the same protocols."
+The dual-practice connection should appear at most ONCE per article, naturally placed. Frame it as accessibility — not exclusivity. Example: "Patients in Bengaluru ask me the same questions I hear in Dubai — and the surgical approach is identical. I apply the same protocols at Aesthetica Veda in Whitefield as I do at Cocoona or Emirates Hospital in Dubai."
 
 ═══════════════════════════════════════
 STRUCTURAL REQUIREMENTS

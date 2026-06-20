@@ -92,12 +92,12 @@ export default function AboutPage() {
               GLP-1 (Ozempic/Wegovy) weight loss.
             </p>
             <p className="text-sm text-brand-charcoal/80 leading-relaxed mt-3">
-              He also visits Bengaluru on a selective basis, consulting and operating at
-              Aesthetica Veda Clinic, Whitefield, for patients seeking an internationally
-              trained surgeon. With training at Lok Nayak Hospital (New Delhi) and AIIMS
-              New Delhi, and over a decade of clinical practice split across the UAE and
-              India, he brings Gulf-standard surgical protocols and international technique
-              standards directly to patients in South India.
+              He is also available in Bengaluru, operating at Aesthetica Veda Clinic,
+              Whitefield — giving patients in South India direct access to the same
+              surgical standards and protocols he applies in Dubai. With training at Lok
+              Nayak Hospital (New Delhi) and AIIMS New Delhi, and over a decade of
+              clinical practice across the UAE and India, he brings Gulf-level body
+              contouring to patients who want international quality without travelling abroad.
             </p>
           </section>
 
