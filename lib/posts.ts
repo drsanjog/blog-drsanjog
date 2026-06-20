@@ -18,6 +18,9 @@ export type PostFrontmatter = {
   author: string
   tags?: string[]
   faqs?: FAQ[]
+  coverImage?: string
+  coverImageAlt?: string
+  coverImageCredit?: string
 }
 
 export type PostMeta = {

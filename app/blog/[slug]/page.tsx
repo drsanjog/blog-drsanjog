@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import Image from 'next/image'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import {
   getAllPosts,
@@ -116,6 +117,25 @@ export default async function PostPage({ params }: Props) {
       {faqSchema && <JsonLd data={faqSchema} />}
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+
+        {frontmatter.coverImage && (
+          <div className="mb-10 rounded-xl overflow-hidden">
+            <Image
+              src={frontmatter.coverImage}
+              alt={frontmatter.coverImageAlt ?? frontmatter.title}
+              width={1200}
+              height={630}
+              className="w-full object-cover max-h-[420px]"
+              priority
+            />
+            {frontmatter.coverImageCredit && (
+              <p className="text-xs text-brand-charcoal/40 mt-1.5 text-right pr-1">
+                Photo: {frontmatter.coverImageCredit}
+              </p>
+            )}
+          </div>
+        )}
+
         <header className="mb-10">
           <div className="flex items-center gap-2 text-sm text-brand-charcoal/50 mb-4">
             <time dateTime={frontmatter.date}>

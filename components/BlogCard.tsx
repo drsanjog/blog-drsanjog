@@ -1,9 +1,22 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { PostMeta, formatDate } from '@/lib/posts'
 
 export default function BlogCard({ post }: { post: PostMeta }) {
   return (
-    <article className="bg-white rounded-xl border border-brand-charcoal/10 p-6 hover:shadow-md transition-shadow flex flex-col">
+    <article className="bg-white rounded-xl border border-brand-charcoal/10 hover:shadow-md transition-shadow flex flex-col overflow-hidden">
+      {post.frontmatter.coverImage && (
+        <Link href={`/blog/${post.slug}`} tabIndex={-1} aria-hidden>
+          <Image
+            src={post.frontmatter.coverImage}
+            alt={post.frontmatter.coverImageAlt ?? post.frontmatter.title}
+            width={600}
+            height={315}
+            className="w-full object-cover h-44"
+          />
+        </Link>
+      )}
+      <div className="p-6 flex flex-col flex-1">
       <div className="flex items-center gap-2 text-xs text-brand-charcoal/50 mb-3">
         <time dateTime={post.frontmatter.date}>
           {formatDate(post.frontmatter.date)}
@@ -41,6 +54,7 @@ export default function BlogCard({ post }: { post: PostMeta }) {
       >
         Read article →
       </Link>
+      </div>
     </article>
   )
 }
