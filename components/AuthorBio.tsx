@@ -2,31 +2,31 @@ import { AUTHOR } from '@/lib/constants'
 
 export default function AuthorBio() {
   return (
-    <aside className="mt-12 p-6 bg-slate-50 rounded-xl border border-slate-200">
-      <p className="text-xs uppercase tracking-widest text-slate-400 mb-3">
+    <aside className="mt-12 p-6 bg-brand-cream rounded-xl border border-brand-charcoal/10">
+      <p className="text-xs uppercase tracking-widest text-brand-charcoal/40 mb-3">
         About the Author
       </p>
-      <p className="font-semibold text-slate-900">
+      <p className="font-semibold text-brand-charcoal">
         {AUTHOR.name}, {AUTHOR.credentials}
       </p>
-      <p className="text-sm text-blue-700 mt-0.5">{AUTHOR.specialty}</p>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-brand-rust mt-0.5">{AUTHOR.specialty}</p>
+      <p className="text-sm text-brand-charcoal/70">
         {AUTHOR.clinic}, {AUTHOR.city}
       </p>
 
-      <dl className="mt-4 text-xs text-slate-500 space-y-1">
+      <dl className="mt-4 text-xs text-brand-charcoal/50 space-y-1">
         <div className="flex flex-wrap gap-x-1">
-          <dt className="font-medium text-slate-600">
+          <dt className="font-medium text-brand-charcoal/70">
             Karnataka Medical Council:
           </dt>
           <dd>{AUTHOR.kmc}</dd>
         </div>
         <div className="flex flex-wrap gap-x-1">
-          <dt className="font-medium text-slate-600">DHA License:</dt>
+          <dt className="font-medium text-brand-charcoal/70">DHA License:</dt>
           <dd>{AUTHOR.dha}</dd>
         </div>
         <div className="flex flex-wrap gap-x-1">
-          <dt className="font-medium text-slate-600">Training:</dt>
+          <dt className="font-medium text-brand-charcoal/70">Training:</dt>
           <dd>{AUTHOR.training.join(' · ')}</dd>
         </div>
       </dl>
@@ -35,7 +35,7 @@ export default function AuthorBio() {
         href={AUTHOR.siteUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-5 inline-block text-sm font-medium text-blue-700 hover:text-blue-900 underline transition-colors"
+        className="mt-5 inline-block text-sm font-medium text-brand-rust hover:text-brand-charcoal underline transition-colors"
       >
         Visit drsanjog.com →
       </a>

@@ -10,10 +10,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        navy: {
-          700: '#1e3a5f',
-          800: '#162d4a',
-          900: '#0f1f33',
+        brand: {
+          cream: '#F5F0E8',
+          charcoal: '#1C1C1C',
+          olive: '#4A5240',
+          rust: '#C4622D',
         },
       },
     },

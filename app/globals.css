@@ -4,6 +4,9 @@
 
 @layer base {
   :root {
-    --navy-800: #162d4a;
+    --brand-cream: #F5F0E8;
+    --brand-charcoal: #1C1C1C;
+    --brand-olive: #4A5240;
+    --brand-rust: #C4622D;
   }
 }

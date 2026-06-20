@@ -117,17 +117,17 @@ export default async function PostPage({ params }: Props) {
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <header className="mb-10">
-          <div className="flex items-center gap-2 text-sm text-slate-500 mb-4">
+          <div className="flex items-center gap-2 text-sm text-brand-charcoal/50 mb-4">
             <time dateTime={frontmatter.date}>
               {formatDate(frontmatter.date)}
             </time>
             <span aria-hidden>·</span>
             <span>{readingTime}</span>
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 leading-tight">
+          <h1 className="text-3xl font-bold text-brand-charcoal leading-tight">
             {frontmatter.title}
           </h1>
-          <p className="mt-3 text-lg text-slate-600 leading-relaxed">
+          <p className="mt-3 text-lg text-brand-charcoal/70 leading-relaxed">
             {frontmatter.description}
           </p>
           {frontmatter.tags && frontmatter.tags.length > 0 && (
@@ -135,7 +135,7 @@ export default async function PostPage({ params }: Props) {
               {frontmatter.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full"
+                  className="text-xs bg-brand-olive/10 text-brand-olive px-2.5 py-1 rounded-full"
                 >
                   {tag}
                 </span>
@@ -144,28 +144,28 @@ export default async function PostPage({ params }: Props) {
           )}
         </header>
 
-        <article className="prose prose-slate max-w-none prose-headings:font-semibold prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline prose-code:text-blue-800 prose-code:bg-blue-50 prose-code:px-1 prose-code:rounded prose-code:font-normal prose-strong:text-slate-900">
+        <article className="prose max-w-none prose-headings:font-semibold prose-headings:text-brand-charcoal prose-p:text-brand-charcoal/80 prose-a:text-brand-rust prose-a:no-underline hover:prose-a:underline prose-code:text-brand-rust prose-code:bg-brand-rust/10 prose-code:px-1 prose-code:rounded prose-code:font-normal prose-strong:text-brand-charcoal prose-li:text-brand-charcoal/80 prose-th:text-brand-charcoal prose-td:text-brand-charcoal/80">
           <MDXRemote source={content} />
         </article>
 
         {frontmatter.faqs && frontmatter.faqs.length > 0 && (
           <section className="mt-12" aria-label="Frequently Asked Questions">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            <h2 className="text-xl font-semibold text-brand-charcoal mb-4">
               Frequently Asked Questions
             </h2>
             <div className="space-y-3">
               {frontmatter.faqs.map((faq, i) => (
                 <details
                   key={i}
-                  className="group bg-white border border-slate-200 rounded-lg"
+                  className="group bg-white border border-brand-charcoal/10 rounded-lg"
                 >
-                  <summary className="flex items-center justify-between gap-4 p-4 font-medium text-slate-900 cursor-pointer list-none select-none">
+                  <summary className="flex items-center justify-between gap-4 p-4 font-medium text-brand-charcoal cursor-pointer list-none select-none">
                     {faq.question}
-                    <span className="text-slate-400 group-open:rotate-180 transition-transform shrink-0">
+                    <span className="text-brand-charcoal/40 group-open:rotate-180 transition-transform shrink-0">
                       ▾
                     </span>
                   </summary>
-                  <p className="px-4 pb-4 text-sm text-slate-700 leading-relaxed">
+                  <p className="px-4 pb-4 text-sm text-brand-charcoal/80 leading-relaxed">
                     {faq.answer}
                   </p>
                 </details>

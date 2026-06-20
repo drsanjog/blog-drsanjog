@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.className} bg-slate-50 text-slate-900 min-h-screen flex flex-col`}
+        className={`${inter.className} bg-brand-cream text-brand-charcoal min-h-screen flex flex-col`}
       >
         <Header />
         <main className="flex-1">{children}</main>

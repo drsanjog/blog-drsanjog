@@ -15,14 +15,14 @@ export default function BlogListPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-slate-900">Medical Blog</h1>
-        <p className="mt-2 text-slate-600 text-lg">
+        <h1 className="text-3xl font-bold text-brand-charcoal">Medical Blog</h1>
+        <p className="mt-2 text-brand-charcoal/70 text-lg">
           Evidence-based articles on plastic and reconstructive surgery.
         </p>
       </div>
 
       {posts.length === 0 ? (
-        <p className="text-slate-500">No articles published yet. Check back soon.</p>
+        <p className="text-brand-charcoal/50">No articles published yet. Check back soon.</p>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2">
           {posts.map((post) => (
