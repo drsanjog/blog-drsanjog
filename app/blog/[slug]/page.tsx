@@ -69,21 +69,20 @@ export default async function PostPage({ params }: Props) {
       name: AUTHOR.name,
       honorificSuffix: AUTHOR.credentials,
       medicalSpecialty: AUTHOR.specialty,
-      worksFor: {
-        '@type': 'MedicalOrganization',
-        name: AUTHOR.clinic,
-        address: {
-          '@type': 'PostalAddress',
-          addressLocality: AUTHOR.city,
-          addressCountry: 'IN',
-        },
-      },
-      identifier: [
+      affiliation: [
+        ...AUTHOR.dubaiClinics.map((c) => ({
+          '@type': 'MedicalOrganization',
+          name: c.name,
+          address: { '@type': 'PostalAddress', addressLocality: c.location, addressCountry: 'AE' },
+        })),
         {
-          '@type': 'PropertyValue',
-          name: 'Karnataka Medical Council',
-          value: AUTHOR.kmc,
+          '@type': 'MedicalOrganization',
+          name: AUTHOR.clinic,
+          address: { '@type': 'PostalAddress', addressLocality: AUTHOR.city, addressCountry: 'IN' },
         },
+      ],
+      identifier: [
+        { '@type': 'PropertyValue', name: 'Karnataka Medical Council', value: AUTHOR.kmc },
         { '@type': 'PropertyValue', name: 'DHA License', value: AUTHOR.dha },
       ],
       url: AUTHOR.siteUrl,

@@ -3,9 +3,9 @@ import { AUTHOR, SITE_URL } from '@/lib/constants'
 import JsonLd from '@/components/JsonLd'
 
 export const metadata: Metadata = {
-  title: 'About Dr. Sanjog Sharma — Plastic Surgeon, Bengaluru',
+  title: 'About Dr. Sanjog Sharma — Plastic Surgeon, Dubai & Bengaluru',
   description:
-    'Dr. Sanjog Sharma (MS, DNB) is a plastic and reconstructive surgeon practising at Aesthetica Veda Clinic, Whitefield, Bengaluru. Trained at Maulana Azad Medical College and AIIMS New Delhi.',
+    'Dr. Sanjog Sharma (MBBS, MS, DNB) is a plastic and cosmetic surgeon practising at Cocoona Centre, Emirates Hospital, and Dubai London Hospital in Dubai, and at Aesthetica Veda Clinic, Bengaluru. Over 10 years experience, 250+ procedures annually.',
   alternates: { canonical: `${SITE_URL}/blog/about` },
 }
 
@@ -15,15 +15,26 @@ const personSchema = {
   name: AUTHOR.name,
   honorificSuffix: AUTHOR.credentials,
   medicalSpecialty: AUTHOR.specialty,
-  worksFor: {
-    '@type': 'MedicalOrganization',
-    name: AUTHOR.clinic,
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: AUTHOR.city,
-      addressCountry: 'IN',
+  affiliation: [
+    ...AUTHOR.dubaiClinics.map((c) => ({
+      '@type': 'MedicalOrganization',
+      name: c.name,
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: c.location,
+        addressCountry: 'AE',
+      },
+    })),
+    {
+      '@type': 'MedicalOrganization',
+      name: AUTHOR.clinic,
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: AUTHOR.city,
+        addressCountry: 'IN',
+      },
     },
-  },
+  ],
   identifier: [
     {
       '@type': 'PropertyValue',
@@ -32,7 +43,7 @@ const personSchema = {
     },
     {
       '@type': 'PropertyValue',
-      name: 'DHA License',
+      name: 'Dubai Health Authority License',
       value: AUTHOR.dha,
     },
   ],
@@ -40,6 +51,10 @@ const personSchema = {
     '@type': 'EducationalOrganization',
     name: inst,
   })),
+  memberOf: {
+    '@type': 'MedicalOrganization',
+    name: 'Association of Plastic Surgeons of India (APSI)',
+  },
   url: AUTHOR.siteUrl,
 }
 
@@ -48,79 +63,150 @@ export default function AboutPage() {
     <>
       <JsonLd data={personSchema} />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-        <h1 className="text-3xl font-bold text-slate-900 mb-8">
+        <h1 className="text-3xl font-bold text-brand-charcoal mb-8">
           About the Author
         </h1>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-8 space-y-8">
+        <div className="bg-white rounded-xl border border-brand-charcoal/10 p-8 space-y-8">
+
+          {/* Name + credentials */}
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">
+            <h2 className="text-2xl font-semibold text-brand-charcoal">
               {AUTHOR.name}, {AUTHOR.credentials}
             </h2>
-            <p className="text-blue-700 font-medium mt-1">{AUTHOR.specialty}</p>
-            <p className="text-slate-600 mt-0.5">
-              {AUTHOR.clinic}, {AUTHOR.city}
+            <p className="text-brand-rust font-medium mt-1">{AUTHOR.specialty}</p>
+            <p className="text-brand-charcoal/60 text-sm mt-1">
+              {AUTHOR.yearsExperience} years experience &nbsp;·&nbsp; {AUTHOR.proceduresPerYear} procedures/year
             </p>
           </div>
 
+          {/* Bio */}
           <section>
-            <h3 className="text-base font-semibold text-slate-800 mb-3 uppercase tracking-wide text-xs">
+            <p className="text-sm text-brand-charcoal/80 leading-relaxed">
+              Dr. Sanjog Sharma is a board-certified plastic and cosmetic surgeon based
+              primarily in Dubai, where he operates at Cocoona Centre for Aesthetic
+              Transformation (Al Wasl Road), Emirates Hospital (Jumeirah), and Dubai London
+              Hospital (Jumeirah). His practice is built around high-volume body contouring
+              surgery — VASER liposuction, high-definition liposuction, tummy tucks, mommy
+              makeovers, post-bariatric contouring, and body contouring for patients following
+              GLP-1 (Ozempic/Wegovy) weight loss.
+            </p>
+            <p className="text-sm text-brand-charcoal/80 leading-relaxed mt-3">
+              He also visits Bengaluru on a selective basis, consulting and operating at
+              Aesthetica Veda Clinic, Whitefield, for patients seeking an internationally
+              trained surgeon. With training at Lok Nayak Hospital (New Delhi) and AIIMS
+              New Delhi, and over a decade of clinical practice split across the UAE and
+              India, he brings Gulf-standard surgical protocols and international technique
+              standards directly to patients in South India.
+            </p>
+          </section>
+
+          {/* Dubai practice — primary */}
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-charcoal/40 mb-3">
+              Dubai Practice (Primary)
+            </h3>
+            <ul className="space-y-2">
+              {AUTHOR.dubaiClinics.map((c) => (
+                <li key={c.name} className="flex items-start gap-2 text-sm text-brand-charcoal/80">
+                  <span className="text-brand-rust mt-0.5 shrink-0">▸</span>
+                  <span>
+                    <strong className="font-medium text-brand-charcoal">{c.name}</strong>
+                    {' — '}{c.location}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-brand-charcoal/50 mt-2">
+              Dubai contact: {AUTHOR.dubaiPhone}
+            </p>
+          </section>
+
+          {/* Bengaluru practice — secondary */}
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-charcoal/40 mb-3">
+              Bengaluru Practice (Selective Visits)
+            </h3>
+            <p className="text-sm text-brand-charcoal/80">
+              <strong className="font-medium text-brand-charcoal">{AUTHOR.clinic}</strong>
+              {' — '}{AUTHOR.city}
+            </p>
+            <p className="text-xs text-brand-charcoal/50 mt-1">
+              India contact: {AUTHOR.bangalorePhone}
+            </p>
+          </section>
+
+          {/* Registrations */}
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-charcoal/40 mb-3">
               Medical Registrations
             </h3>
-            <dl className="text-sm text-slate-700 space-y-2">
+            <dl className="text-sm text-brand-charcoal/80 space-y-2">
               <div className="flex flex-wrap gap-x-2">
-                <dt className="font-medium">Karnataka Medical Council:</dt>
+                <dt className="font-medium text-brand-charcoal">Karnataka Medical Council:</dt>
                 <dd>{AUTHOR.kmc}</dd>
               </div>
               <div className="flex flex-wrap gap-x-2">
-                <dt className="font-medium">
-                  Dubai Health Authority (DHA) License:
-                </dt>
+                <dt className="font-medium text-brand-charcoal">Dubai Health Authority (DHA) License:</dt>
                 <dd>{AUTHOR.dha}</dd>
               </div>
             </dl>
           </section>
 
+          {/* Training */}
           <section>
-            <h3 className="text-base font-semibold text-slate-800 mb-3 uppercase tracking-wide text-xs">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-charcoal/40 mb-3">
               Training &amp; Education
             </h3>
-            <ul className="text-sm text-slate-700 space-y-1">
+            <ul className="text-sm text-brand-charcoal/80 space-y-1">
               {AUTHOR.training.map((inst) => (
                 <li key={inst} className="flex gap-2">
-                  <span className="text-blue-400 mt-0.5">▸</span>
+                  <span className="text-brand-rust mt-0.5 shrink-0">▸</span>
                   {inst}
                 </li>
               ))}
             </ul>
           </section>
 
+          {/* Membership */}
           <section>
-            <h3 className="text-base font-semibold text-slate-800 mb-3 uppercase tracking-wide text-xs">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-charcoal/40 mb-3">
+              Professional Membership
+            </h3>
+            <p className="text-sm text-brand-charcoal/80">{AUTHOR.apsi}</p>
+          </section>
+
+          {/* About this blog */}
+          <section>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-brand-charcoal/40 mb-3">
               About This Blog
             </h3>
-            <p className="text-sm text-slate-700 leading-relaxed">
-              This blog publishes educational articles on plastic and
-              reconstructive surgery. Content is intended to support patient
-              education and public understanding of surgical conditions and
-              procedures. All articles are authored by Dr. Sanjog Sharma based
-              on current medical literature and clinical experience.
-            </p>
-            <p className="text-sm text-slate-700 leading-relaxed mt-3">
-              Articles on this blog are for general educational purposes only
-              and do not constitute medical advice. They do not replace a
-              personalised in-person consultation with a qualified surgeon.
+            <p className="text-sm text-brand-charcoal/80 leading-relaxed">
+              This blog publishes educational articles on plastic and cosmetic surgery, with a
+              focus on body contouring, recovery, and patient selection. All articles are
+              authored by Dr. Sanjog Sharma based on peer-reviewed literature and clinical
+              experience. Content is intended for general educational purposes only and does
+              not constitute medical advice. It does not replace a personalised in-person
+              consultation with a qualified surgeon.
             </p>
           </section>
 
-          <div className="pt-4 border-t border-slate-200">
+          <div className="pt-4 border-t border-brand-charcoal/10 flex flex-wrap gap-3">
             <a
               href={AUTHOR.siteUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors"
+              className="inline-flex items-center gap-1.5 bg-brand-rust text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-brand-charcoal transition-colors"
             >
               Visit drsanjog.com →
+            </a>
+            <a
+              href={AUTHOR.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 border border-brand-charcoal/20 text-brand-charcoal px-5 py-2.5 rounded-lg text-sm font-medium hover:border-brand-rust hover:text-brand-rust transition-colors"
+            >
+              Instagram
             </a>
           </div>
         </div>
