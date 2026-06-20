@@ -64,6 +64,33 @@ Blog angle: An international surgeon who does high-quality body contouring work 
 The reader in Bengaluru should come away thinking: "This is a surgeon operating at international standard in Dubai who is available right here in Bangalore. That's exactly who I want."
 
 ═══════════════════════════════════════
+INTERNATIONAL PATIENT BASE — USE WHERE RELEVANT
+═══════════════════════════════════════
+
+Dr. Sharma's patient base spans multiple ethnicities and nationalities, shaped by his Dubai practice. This is a genuine E-E-A-T signal and should be woven naturally into articles where it adds clinical context — not forced into every post.
+
+Patient populations he regularly works with:
+• Indian diaspora patients (UAE, UK, Australia, USA, Canada) who schedule surgery during visits home to Bengaluru — accessing the same surgeon they would see in Dubai, at a fraction of the cost
+• South Asian patients (Indian, Pakistani, Sri Lankan, Bangladeshi) in Dubai
+• Arab and Middle Eastern patients at Cocoona, Emirates Hospital, and Dubai London Hospital
+• African and East African patients, increasingly a significant cohort in UAE cosmetic surgery
+• Western European and British expatriate patients in Dubai
+
+Clinical relevance of ethnic diversity (use where accurate for the procedure):
+• South Asian skin — higher Fitzpatrick types (III–VI) carry greater risk of hyperpigmentation, hypertrophic scarring, and keloid formation; scar management approach differs
+• South Asian body composition — fat distribution patterns differ from Caucasian norms; liposuction plans must account for denser, more fibrous fat in some patients
+• Rhinoplasty in South Asian / Arab / African patients — thicker skin envelope, different cartilage characteristics, different aesthetic goals vs Western norms
+• GLP-1 weight loss patterns across ethnicities — visceral fat distribution and skin elasticity differ by ethnicity, affecting surgical planning
+• Indian expat patients often present with higher BMI, more visceral fat from sedentary expat lifestyle, and specific skin texture characteristics
+
+Framing guidance:
+- Use to demonstrate clinical breadth and real-world authority ("across the ethnic range of my Dubai patient population...")
+- Use to contextualise procedural differences ("South Asian patients have a different risk profile for...")
+- Use to validate the India-visit value proposition ("Indian expat patients from the GCC and UK who return for surgery in Bengaluru...")
+- NEVER frame as exotic or tokenising
+- NMC compliant: no testimonials, no named patients, no before/after images
+
+═══════════════════════════════════════
 ARTICLE ARCHETYPES — ROTATE THROUGH THESE
 ═══════════════════════════════════════
 
@@ -90,6 +117,9 @@ Every post MUST include 2–3 first-person paragraphs woven naturally into the a
 - "Patients who come to my Bengaluru clinic having researched this online often ask..."
 - "Across my practice in Dubai and Bengaluru, the pattern I see is..."
 - "Over 10 years performing this procedure, the single most predictive factor I've found is..."
+- "Across the ethnic range of my patient population in Dubai — South Asian, Arab, African, Western — the one consistent finding is..."
+- "A significant proportion of my Bengaluru patients are Indian expats returning from the UAE, UK, or Australia — they have researched this surgery in Dubai and want continuity of care..."
+- "Operating across South Asian, Middle Eastern, and Western patient populations in Dubai has taught me that..."
 
 These paragraphs must feel like genuine clinical insight, not marketing copy.
 
@@ -211,6 +241,11 @@ International Standards / Dubai Angle:
 • International body contouring protocols — how standards in Dubai compare
 • What to expect from a UAE-trained plastic surgeon visiting India
 • Pre-operative assessment for body contouring — the Gulf standard
+• Medical tourism: why Indian expats from the UAE and UK return to Bengaluru for surgery
+• Plastic surgery for South Asian patients — skin type, scarring risk, what changes about the approach
+• Rhinoplasty in South Asian patients — aesthetic goals, thicker skin, ethnic nasal anatomy
+• Body contouring in Arab and Middle Eastern patients — what differs clinically
+• Plastic surgery in Bengaluru for NRI patients — what to plan for a surgery trip home
 
 Face & Other:
 • Rhinoplasty in South Asian patients — anatomical considerations
