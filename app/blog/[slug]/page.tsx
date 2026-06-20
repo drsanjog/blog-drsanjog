@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { MDXRemote } from 'next-mdx-remote/rsc'
+import remarkGfm from 'remark-gfm'
 import {
   getAllPosts,
   getPostBySlug,
@@ -163,8 +164,8 @@ export default async function PostPage({ params }: Props) {
           )}
         </header>
 
-        <article className="prose max-w-none prose-headings:font-semibold prose-headings:text-brand-charcoal prose-p:text-brand-charcoal/80 prose-a:text-brand-rust prose-a:no-underline hover:prose-a:underline prose-code:text-brand-rust prose-code:bg-brand-rust/10 prose-code:px-1 prose-code:rounded prose-code:font-normal prose-strong:text-brand-charcoal prose-li:text-brand-charcoal/80 prose-th:text-brand-charcoal prose-td:text-brand-charcoal/80">
-          <MDXRemote source={content} />
+        <article className="prose max-w-none prose-headings:font-semibold prose-headings:text-brand-charcoal prose-p:text-brand-charcoal/80 prose-a:text-brand-rust prose-a:no-underline hover:prose-a:underline prose-code:text-brand-rust prose-code:bg-brand-rust/10 prose-code:px-1 prose-code:rounded prose-code:font-normal prose-strong:text-brand-charcoal prose-li:text-brand-charcoal/80 prose-th:text-brand-charcoal prose-th:bg-brand-cream prose-th:font-semibold prose-td:text-brand-charcoal/80 prose-table:w-full prose-thead:border-b-2 prose-thead:border-brand-charcoal/20 [&_table]:block [&_table]:overflow-x-auto [&_table]:border [&_table]:border-brand-charcoal/10 [&_table]:rounded-lg [&_th]:px-3 [&_th]:py-2 [&_td]:px-3 [&_td]:py-2 [&_tr]:border-b [&_tr]:border-brand-charcoal/10">
+          <MDXRemote source={content} options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }} />
         </article>
 
         {frontmatter.faqs && frontmatter.faqs.length > 0 && (
