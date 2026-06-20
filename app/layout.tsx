@@ -20,6 +20,9 @@ export const metadata: Metadata = {
     type: 'website',
   },
   authors: [{ name: 'Dr. Sanjog Sharma, MS DNB' }],
+  verification: {
+    google: 'cviaiqRotEfiM6FIhZaEBOJtViHw75LWX4i2-FAyVnk',
+  },
 }
 
 export default function RootLayout({
