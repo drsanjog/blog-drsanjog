@@ -34,6 +34,6 @@ export const AUTHOR = {
 
   // Online presence
   siteUrl: 'https://drsanjog.com',
-  instagram: 'https://www.instagram.com/drsanjog.sharma',
+  instagram: 'https://www.instagram.com/dr.sanjog.sharma',
   linkedin: 'https://www.linkedin.com/in/dr-sanjog-sharma-4b4710323/',
 } as const

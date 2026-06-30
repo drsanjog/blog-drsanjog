@@ -60,6 +60,14 @@ export default function Footer() {
           <Link href="/blog/cosmetic-surgery-dubai" className="text-brand-cream/50 hover:text-brand-cream transition-colors">Dubai</Link>
           <Link href="/blog/faq" className="text-brand-cream/50 hover:text-brand-cream transition-colors">FAQ</Link>
           <a
+            href={AUTHOR.instagram}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brand-cream/50 hover:text-brand-cream transition-colors"
+          >
+            Instagram ↗
+          </a>
+          <a
             href={AUTHOR.siteUrl}
             target="_blank"
             rel="noopener noreferrer"

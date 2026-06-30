@@ -53,14 +53,24 @@ export default function AuthorBio() {
         </div>
       </dl>
 
-      <a
-        href={AUTHOR.siteUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-5 inline-block text-sm font-medium text-brand-rust hover:text-brand-charcoal underline transition-colors"
-      >
-        Visit drsanjog.com →
-      </a>
+      <div className="mt-5 flex items-center gap-4">
+        <a
+          href={AUTHOR.siteUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-brand-rust hover:text-brand-charcoal underline transition-colors"
+        >
+          Visit drsanjog.com →
+        </a>
+        <a
+          href={AUTHOR.instagram}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-brand-charcoal/60 hover:text-brand-rust transition-colors"
+        >
+          @dr.sanjog.sharma ↗
+        </a>
+      </div>
     </aside>
   )
 }
