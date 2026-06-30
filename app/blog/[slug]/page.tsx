@@ -11,6 +11,7 @@ import {
 } from '@/lib/posts'
 import { AUTHOR, SITE_URL } from '@/lib/constants'
 import JsonLd from '@/components/JsonLd'
+import Breadcrumb from '@/components/Breadcrumb'
 import AuthorBio from '@/components/AuthorBio'
 import MedicalDisclaimer from '@/components/MedicalDisclaimer'
 import RelatedPosts from '@/components/RelatedPosts'
@@ -200,6 +201,7 @@ export default async function PostPage({ params }: Props) {
       <JsonLd data={breadcrumbSchema} />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+        <Breadcrumb items={[{ label: 'Blog', href: '/' }, { label: frontmatter.title }]} />
 
         {frontmatter.coverImage && (
           <div className="mb-10 rounded-xl overflow-hidden">

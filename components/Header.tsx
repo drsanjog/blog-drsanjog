@@ -12,12 +12,18 @@ export default function Header() {
             Plastic &amp; Reconstructive Surgery
           </span>
         </Link>
-        <nav className="flex items-center gap-4 sm:gap-6 text-sm shrink-0">
+        <nav className="flex items-center gap-3 sm:gap-5 text-sm shrink-0">
           <Link
-            href="/blog"
+            href="/"
             className="text-brand-charcoal/70 hover:text-brand-rust transition-colors"
           >
             Blog
+          </Link>
+          <Link
+            href="/blog/faq"
+            className="text-brand-charcoal/70 hover:text-brand-rust transition-colors hidden sm:block"
+          >
+            FAQ
           </Link>
           <Link
             href="/blog/about"
