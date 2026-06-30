@@ -25,15 +25,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = getPostBySlug(params.slug)
   if (!post) return {}
 
-  const { title, description, date, targetKeyword } = post.frontmatter
+  const { title, description, date, targetKeyword, keywords } = post.frontmatter
   const url = `${SITE_URL}/blog/${params.slug}`
 
   return {
     title,
     description,
-    keywords: targetKeyword,
+    keywords: keywords ?? [targetKeyword],
     authors: [{ name: `${AUTHOR.name}, ${AUTHOR.credentials}` }],
-    alternates: { canonical: url },
+    robots: { index: true, follow: true },
+    alternates: {
+      canonical: url,
+      languages: {
+        'en-IN': url,
+        'en-AE': url,
+      },
+    },
     openGraph: {
       title,
       description,
@@ -41,6 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'article',
       publishedTime: date,
       authors: [`${AUTHOR.name}, ${AUTHOR.credentials}`],
+      images: [{ url: `${url}/opengraph-image`, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -109,12 +117,87 @@ export default async function PostPage({ params }: Props) {
         }
       : null
 
+  const personSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: AUTHOR.name,
+    jobTitle: 'Plastic and Reconstructive Surgeon',
+    description: `${AUTHOR.credentials}. Plastic and cosmetic surgeon practising in Dubai and Bengaluru.`,
+    url: AUTHOR.siteUrl,
+    sameAs: [AUTHOR.siteUrl, AUTHOR.instagram, AUTHOR.linkedin],
+    knowsAbout: ['plastic surgery', 'cosmetic surgery', 'body contouring', 'reconstructive surgery', 'fat transfer', 'rhinoplasty', 'liposuction'],
+    alumniOf: AUTHOR.training.map((t) => ({ '@type': 'CollegeOrUniversity', name: t })),
+    memberOf: { '@type': 'Organization', name: 'Association of Plastic Surgeons of India (APSI)' },
+    hasCredential: ['MBBS', 'MS', 'DNB'].map((c) => ({
+      '@type': 'EducationalOccupationalCredential',
+      credentialCategory: c,
+    })),
+    worksFor: [
+      ...AUTHOR.dubaiClinics.map((c) => ({
+        '@type': 'MedicalOrganization',
+        name: c.name,
+        address: { '@type': 'PostalAddress', addressLocality: c.location, addressCountry: 'AE' },
+      })),
+      {
+        '@type': 'MedicalOrganization',
+        name: AUTHOR.clinic,
+        address: { '@type': 'PostalAddress', addressLocality: 'Bengaluru', addressCountry: 'IN' },
+      },
+    ],
+  }
+
+  const procedureSchema = frontmatter.procedureName
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'MedicalProcedure',
+        name: frontmatter.procedureName,
+        ...(frontmatter.procedureAlt && { alternateName: frontmatter.procedureAlt }),
+        procedureType: 'Surgical',
+        ...(frontmatter.procedureBodyLocation && { bodyLocation: frontmatter.procedureBodyLocation }),
+        ...(frontmatter.procedurePrep && { preparation: frontmatter.procedurePrep }),
+        ...(frontmatter.procedureHow && { howPerformed: frontmatter.procedureHow }),
+        ...(frontmatter.procedureFollowup && { followup: frontmatter.procedureFollowup }),
+        recognizingAuthority: {
+          '@type': 'Organization',
+          name: 'International Society of Aesthetic Plastic Surgery (ISAPS)',
+          url: 'https://www.isaps.org',
+        },
+      }
+    : null
+
+  const howToSchema =
+    frontmatter.howToSteps && frontmatter.howToSteps.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'HowTo',
+          name: frontmatter.howToName ?? `How ${frontmatter.procedureName ?? 'This Procedure'} is Performed`,
+          step: frontmatter.howToSteps.map((s) => ({
+            '@type': 'HowToStep',
+            name: s.name,
+            text: s.text,
+          })),
+        }
+      : null
+
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Blog', item: `${SITE_URL}/blog` },
+      { '@type': 'ListItem', position: 2, name: frontmatter.title, item: url },
+    ],
+  }
+
   const related = getRelatedPosts(params.slug, frontmatter.tags ?? [])
 
   return (
     <>
       <JsonLd data={articleSchema} />
       {faqSchema && <JsonLd data={faqSchema} />}
+      <JsonLd data={personSchema} />
+      {procedureSchema && <JsonLd data={procedureSchema} />}
+      {howToSchema && <JsonLd data={howToSchema} />}
+      <JsonLd data={breadcrumbSchema} />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
 
@@ -194,7 +277,7 @@ export default async function PostPage({ params }: Props) {
           </section>
         )}
 
-        <MedicalDisclaimer />
+        <MedicalDisclaimer reviewedDate={frontmatter.date} />
         <AuthorBio />
         <RelatedPosts posts={related} />
       </div>

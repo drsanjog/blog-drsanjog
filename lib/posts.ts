@@ -10,17 +10,33 @@ export type FAQ = {
   answer: string
 }
 
+export type HowToStep = {
+  name: string
+  text: string
+}
+
 export type PostFrontmatter = {
   title: string
   description: string
   date: string
   targetKeyword: string
+  keywords?: string[]
   author: string
   tags?: string[]
   faqs?: FAQ[]
   coverImage?: string
   coverImageAlt?: string
   coverImageCredit?: string
+  // MedicalProcedure schema fields
+  procedureName?: string
+  procedureAlt?: string
+  procedureBodyLocation?: string
+  procedurePrep?: string
+  procedureHow?: string
+  procedureFollowup?: string
+  // HowTo schema fields
+  howToName?: string
+  howToSteps?: HowToStep[]
 }
 
 export type PostMeta = {
