@@ -455,8 +455,13 @@ if (coverImage) {
 // ────────────────────────────────────────────────────────────
 writeFileSync(outPath, mdx, 'utf8')
 
+const liveUrl = `https://blog.drsanjog.com/blog/${slug}`
+
+// Save URL for ping-indexing.mjs to consume after git push
+writeFileSync(join(__dirname, '..', '.last-published-url'), liveUrl, 'utf8')
+
 console.log(`✅ Post written: content/posts/${slug}.mdx`)
 console.log(`   Title    : ${title}`)
 console.log(`   Slug     : ${slug}`)
 console.log(`   Cover    : ${coverImage?.url ?? 'none'}`)
-console.log(`   Live URL : https://blog.drsanjog.com/blog/${slug}`)
+console.log(`   Live URL : ${liveUrl}`)
