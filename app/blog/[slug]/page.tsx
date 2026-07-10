@@ -22,16 +22,29 @@ export function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }))
 }
 
+// Keep meta descriptions inside the 150–160 char SERP window. Trims on a word
+// boundary as a safety net; posts should still author a good ~155-char description.
+function clampDescription(desc: string, max = 160): string {
+  if (desc.length <= max) return desc
+  const cut = desc.slice(0, max - 1)
+  return cut.slice(0, cut.lastIndexOf(' ')).trimEnd() + '…'
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = getPostBySlug(params.slug)
   if (!post) return {}
 
-  const { title, description, date, targetKeyword, keywords } = post.frontmatter
+  const { title, seoTitle, description, date, dateModified, targetKeyword, keywords } =
+    post.frontmatter
   const url = `${SITE_URL}/blog/${params.slug}`
+  // <title> uses the short seoTitle when present (layout appends " | Dr. Sanjog
+  // Sharma"); the full title stays as the on-page H1.
+  const metaTitle = seoTitle ?? title
+  const metaDescription = clampDescription(description)
 
   return {
-    title,
-    description,
+    title: metaTitle,
+    description: metaDescription,
     keywords: keywords ?? [targetKeyword],
     authors: [{ name: `${AUTHOR.name}, ${AUTHOR.credentials}` }],
     robots: { index: true, follow: true },
@@ -43,18 +56,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     },
     openGraph: {
-      title,
-      description,
+      title: metaTitle,
+      description: metaDescription,
       url,
       type: 'article',
       publishedTime: date,
+      modifiedTime: dateModified ?? date,
       authors: [`${AUTHOR.name}, ${AUTHOR.credentials}`],
       images: [{ url: `${url}/opengraph-image`, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
-      title,
-      description,
+      title: metaTitle,
+      description: metaDescription,
     },
   }
 }
@@ -72,7 +86,7 @@ export default async function PostPage({ params }: Props) {
     headline: frontmatter.title,
     description: frontmatter.description,
     datePublished: frontmatter.date,
-    dateModified: frontmatter.date,
+    dateModified: frontmatter.dateModified ?? frontmatter.date,
     url,
     author: {
       '@type': 'Physician',
@@ -228,6 +242,13 @@ export default async function PostPage({ params }: Props) {
             </time>
             <span aria-hidden>·</span>
             <span>{readingTime}</span>
+            {frontmatter.dateModified &&
+              frontmatter.dateModified !== frontmatter.date && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>Updated {formatDate(frontmatter.dateModified)}</span>
+                </>
+              )}
           </div>
           <h1 className="text-3xl font-bold text-brand-charcoal leading-tight">
             {frontmatter.title}
@@ -279,7 +300,7 @@ export default async function PostPage({ params }: Props) {
           </section>
         )}
 
-        <MedicalDisclaimer reviewedDate={frontmatter.date} />
+        <MedicalDisclaimer reviewedDate={frontmatter.dateModified ?? frontmatter.date} />
         <AuthorBio />
         <RelatedPosts posts={related} />
       </div>

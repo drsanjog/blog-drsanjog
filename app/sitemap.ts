@@ -39,11 +39,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly',
       priority: 0.8,
     },
+    // Pillar / topic-cluster hub
+    {
+      url: `${SITE_URL}/blog/body-contouring`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
   ]
 
   const postPages: MetadataRoute.Sitemap = posts.map((post) => ({
     url: `${SITE_URL}/blog/${post.slug}`,
-    lastModified: new Date(post.frontmatter.date),
+    lastModified: new Date(post.frontmatter.dateModified ?? post.frontmatter.date),
     changeFrequency: 'monthly' as const,
     priority: 0.9,
   }))

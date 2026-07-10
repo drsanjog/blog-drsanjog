@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "blog-studio",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["studio/server.mjs"],
+      "port": 4455
     }
   ]
 }

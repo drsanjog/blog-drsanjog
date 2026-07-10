@@ -17,8 +17,10 @@ export type HowToStep = {
 
 export type PostFrontmatter = {
   title: string
+  seoTitle?: string
   description: string
   date: string
+  dateModified?: string
   targetKeyword: string
   keywords?: string[]
   author: string
@@ -89,7 +91,7 @@ export function getPostBySlug(slug: string): Post | null {
 export function getRelatedPosts(
   currentSlug: string,
   tags: string[] = [],
-  count = 3
+  count = 4
 ): PostMeta[] {
   return getAllPosts()
     .filter((p) => p.slug !== currentSlug)
