@@ -1,13 +1,9 @@
 import type { Metadata } from 'next'
 import { getAllPosts } from '@/lib/posts'
 import BlogCard from '@/components/BlogCard'
+import { site } from '@/lib/site'
 
-export const metadata: Metadata = {
-  title: 'Medical Blog — Plastic & Reconstructive Surgery',
-  description:
-    'Evidence-based educational articles on plastic and reconstructive surgery by Dr. Sanjog Sharma, MS DNB, Aesthetica Veda Clinic, Bengaluru.',
-  alternates: { canonical: 'https://blog.drsanjog.com/blog' },
-}
+export const metadata: Metadata = site.blogListMetadata
 
 export default function BlogListPage() {
   const posts = getAllPosts()
@@ -15,9 +11,9 @@ export default function BlogListPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-brand-charcoal">Medical Blog</h1>
+        <h1 className="text-3xl font-bold text-brand-charcoal">{site.ui.homeH1}</h1>
         <p className="mt-2 text-brand-charcoal/70 text-lg">
-          Evidence-based articles on plastic and reconstructive surgery.
+          {site.ui.homeSubtitle}
         </p>
       </div>
 

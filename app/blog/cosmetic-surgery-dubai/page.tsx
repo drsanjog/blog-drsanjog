@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/posts'
+import { notFound } from 'next/navigation'
 import { AUTHOR, SITE_URL } from '@/lib/constants'
+import { getSiteKey } from '@/lib/site'
 import JsonLd from '@/components/JsonLd'
 import Breadcrumb from '@/components/Breadcrumb'
 
@@ -96,6 +98,7 @@ const DUBAI_POSTS = [
 ]
 
 export default function CosmeticSurgeryDubaiPage() {
+  if (getSiteKey() !== 'sanjog') notFound()
   const allPosts = getAllPosts()
   const posts = allPosts.filter((p) => DUBAI_POSTS.includes(p.slug))
 

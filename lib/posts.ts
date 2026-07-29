@@ -2,8 +2,14 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import readingTime from 'reading-time'
+import { site } from './site'
 
-const POSTS_DIR = path.join(process.cwd(), 'content', 'posts')
+// Sanjog keeps the original content/posts folder (unchanged); other sites read
+// from content/<key>/posts so each blog has its own content.
+const POSTS_DIR =
+  site.key === 'sanjog'
+    ? path.join(process.cwd(), 'content', 'posts')
+    : path.join(process.cwd(), 'content', site.key, 'posts')
 
 export type FAQ = {
   question: string

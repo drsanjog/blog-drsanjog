@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { AUTHOR, SITE_URL } from '@/lib/constants'
+import { getSiteKey } from '@/lib/site'
 import JsonLd from '@/components/JsonLd'
 
 export const metadata: Metadata = {
@@ -59,6 +61,7 @@ const personSchema = {
 }
 
 export default function AboutPage() {
+  if (getSiteKey() !== 'sanjog') notFound()
   return (
     <>
       <JsonLd data={personSchema} />

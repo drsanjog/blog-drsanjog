@@ -10,11 +10,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Driven by CSS variables (see app/globals.css + per-site override in
+        // app/layout.tsx) so every `brand-*` class re-themes per site.
         brand: {
-          cream: '#F5F0E8',
-          charcoal: '#1C1C1C',
-          olive: '#4A5240',
-          rust: '#C4622D',
+          cream: 'var(--brand-cream)',
+          charcoal: 'var(--brand-charcoal)',
+          olive: 'var(--brand-olive)',
+          rust: 'var(--brand-rust)',
         },
       },
     },

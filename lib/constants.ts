@@ -1,5 +1,11 @@
-export const SITE_URL = 'https://blog.drsanjog.com'
+import { site } from './site'
 
+// Active site URL (per SITE env var; defaults to blog.drsanjog.com).
+export const SITE_URL = site.url
+
+// Dr. Sanjog's full identity. Consumed only by the Sanjog-specific pages
+// (About / FAQ / location landings), which are guarded to the sanjog site.
+// Shared chrome and schema now read from `site` (lib/site.ts) instead.
 export const AUTHOR = {
   name: 'Dr. Sanjog Sharma',
   credentials: 'MBBS, MS, DNB',

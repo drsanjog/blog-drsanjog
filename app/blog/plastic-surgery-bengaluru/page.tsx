@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/posts'
+import { notFound } from 'next/navigation'
 import { AUTHOR, SITE_URL } from '@/lib/constants'
+import { getSiteKey } from '@/lib/site'
 import JsonLd from '@/components/JsonLd'
 import Breadcrumb from '@/components/Breadcrumb'
 
@@ -84,6 +86,7 @@ const BENGALURU_POSTS = [
 ]
 
 export default function PlasticSurgeryBengaluruPage() {
+  if (getSiteKey() !== 'sanjog') notFound()
   const allPosts = getAllPosts()
   const posts = allPosts.filter((p) => BENGALURU_POSTS.includes(p.slug))
 

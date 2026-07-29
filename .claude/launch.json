@@ -8,6 +8,12 @@
       "port": 3000
     },
     {
+      "name": "blog-arti",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:arti"],
+      "port": 3002
+    },
+    {
       "name": "blog-studio",
       "runtimeExecutable": "node",
       "runtimeArgs": ["studio/server.mjs"],

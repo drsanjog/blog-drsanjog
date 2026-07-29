@@ -9,7 +9,8 @@ import {
   getRelatedPosts,
   formatDate,
 } from '@/lib/posts'
-import { AUTHOR, SITE_URL } from '@/lib/constants'
+import { SITE_URL } from '@/lib/constants'
+import { site } from '@/lib/site'
 import JsonLd from '@/components/JsonLd'
 import Breadcrumb from '@/components/Breadcrumb'
 import AuthorBio from '@/components/AuthorBio'
@@ -46,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: metaTitle,
     description: metaDescription,
     keywords: keywords ?? [targetKeyword],
-    authors: [{ name: `${AUTHOR.name}, ${AUTHOR.credentials}` }],
+    authors: [{ name: `${site.author.name}, ${site.author.credentials}` }],
     robots: { index: true, follow: true },
     alternates: {
       canonical: url,
@@ -62,7 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'article',
       publishedTime: date,
       modifiedTime: dateModified ?? date,
-      authors: [`${AUTHOR.name}, ${AUTHOR.credentials}`],
+      authors: [`${site.author.name}, ${site.author.credentials}`],
       images: [{ url: `${url}/opengraph-image`, width: 1200, height: 630 }],
     },
     twitter: {
@@ -80,44 +81,8 @@ export default async function PostPage({ params }: Props) {
   const { frontmatter, content, readingTime } = post
   const url = `${SITE_URL}/blog/${params.slug}`
 
-  const articleSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'MedicalWebPage',
-    headline: frontmatter.title,
-    description: frontmatter.description,
-    datePublished: frontmatter.date,
-    dateModified: frontmatter.dateModified ?? frontmatter.date,
-    url,
-    author: {
-      '@type': 'Physician',
-      name: AUTHOR.name,
-      honorificSuffix: AUTHOR.credentials,
-      medicalSpecialty: AUTHOR.specialty,
-      affiliation: [
-        ...AUTHOR.dubaiClinics.map((c) => ({
-          '@type': 'MedicalOrganization',
-          name: c.name,
-          address: { '@type': 'PostalAddress', addressLocality: c.location, addressCountry: 'AE' },
-        })),
-        {
-          '@type': 'MedicalOrganization',
-          name: AUTHOR.clinic,
-          address: { '@type': 'PostalAddress', addressLocality: AUTHOR.city, addressCountry: 'IN' },
-        },
-      ],
-      identifier: [
-        { '@type': 'PropertyValue', name: 'Karnataka Medical Council', value: AUTHOR.kmc },
-        { '@type': 'PropertyValue', name: 'DHA License', value: AUTHOR.dha },
-      ],
-      url: AUTHOR.siteUrl,
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: AUTHOR.clinic,
-      url: AUTHOR.siteUrl,
-    },
-    mainContentOfPage: { '@type': 'WebPageElement' },
-  }
+  // Article + author-identity JSON-LD are site-specific (built from config).
+  const [articleSchema, personSchema] = site.postAuthorSchemas(frontmatter, url)
 
   const faqSchema =
     frontmatter.faqs && frontmatter.faqs.length > 0
@@ -132,35 +97,6 @@ export default async function PostPage({ params }: Props) {
         }
       : null
 
-  const personSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'Person',
-    name: AUTHOR.name,
-    jobTitle: 'Plastic and Reconstructive Surgeon',
-    description: `${AUTHOR.credentials}. Plastic and cosmetic surgeon practising in Dubai and Bengaluru.`,
-    url: AUTHOR.siteUrl,
-    sameAs: [AUTHOR.siteUrl, AUTHOR.instagram, AUTHOR.linkedin],
-    knowsAbout: ['plastic surgery', 'cosmetic surgery', 'body contouring', 'reconstructive surgery', 'fat transfer', 'rhinoplasty', 'liposuction'],
-    alumniOf: AUTHOR.training.map((t) => ({ '@type': 'CollegeOrUniversity', name: t })),
-    memberOf: { '@type': 'Organization', name: 'Association of Plastic Surgeons of India (APSI)' },
-    hasCredential: ['MBBS', 'MS', 'DNB'].map((c) => ({
-      '@type': 'EducationalOccupationalCredential',
-      credentialCategory: c,
-    })),
-    worksFor: [
-      ...AUTHOR.dubaiClinics.map((c) => ({
-        '@type': 'MedicalOrganization',
-        name: c.name,
-        address: { '@type': 'PostalAddress', addressLocality: c.location, addressCountry: 'AE' },
-      })),
-      {
-        '@type': 'MedicalOrganization',
-        name: AUTHOR.clinic,
-        address: { '@type': 'PostalAddress', addressLocality: 'Bengaluru', addressCountry: 'IN' },
-      },
-    ],
-  }
-
   const procedureSchema = frontmatter.procedureName
     ? {
         '@context': 'https://schema.org',
@@ -172,11 +108,13 @@ export default async function PostPage({ params }: Props) {
         ...(frontmatter.procedurePrep && { preparation: frontmatter.procedurePrep }),
         ...(frontmatter.procedureHow && { howPerformed: frontmatter.procedureHow }),
         ...(frontmatter.procedureFollowup && { followup: frontmatter.procedureFollowup }),
-        recognizingAuthority: {
-          '@type': 'Organization',
-          name: 'International Society of Aesthetic Plastic Surgery (ISAPS)',
-          url: 'https://www.isaps.org',
-        },
+        ...(site.recognizingAuthority && {
+          recognizingAuthority: {
+            '@type': 'Organization',
+            name: site.recognizingAuthority.name,
+            url: site.recognizingAuthority.url,
+          },
+        }),
       }
     : null
 

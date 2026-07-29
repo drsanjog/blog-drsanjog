@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getAllPosts } from '@/lib/posts'
+import { notFound } from 'next/navigation'
 import { AUTHOR, SITE_URL } from '@/lib/constants'
+import { getSiteKey } from '@/lib/site'
 import JsonLd from '@/components/JsonLd'
 import Breadcrumb from '@/components/Breadcrumb'
 
@@ -86,6 +88,7 @@ const breadcrumbSchema = {
 }
 
 export default function BodyContouringPillarPage() {
+  if (getSiteKey() !== 'sanjog') notFound()
   const bySlug = new Map(getAllPosts().map((p) => [p.slug, p]))
 
   // CollectionPage + ItemList so search/AI systems can read the content map.

@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { getPostBySlug } from '@/lib/posts'
-import { AUTHOR } from '@/lib/constants'
+import { site } from '@/lib/site'
 
 export const runtime = 'nodejs'
 export const size = { width: 1200, height: 630 }
@@ -14,7 +14,7 @@ export default function Image({ params }: { params: { slug: string } }) {
     (
       <div
         style={{
-          background: 'linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)',
+          background: `linear-gradient(135deg, ${site.ui.ogGradientFrom} 0%, ${site.ui.ogGradientTo} 100%)`,
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -33,7 +33,7 @@ export default function Image({ params }: { params: { slug: string } }) {
             textTransform: 'uppercase',
           }}
         >
-          blog.drsanjog.com
+          {site.ui.ogHost}
         </div>
         <div
           style={{
@@ -53,8 +53,7 @@ export default function Image({ params }: { params: { slug: string } }) {
             borderTop: '1px solid rgba(255,255,255,0.2)',
           }}
         >
-          {AUTHOR.name}, {AUTHOR.credentials} &middot; {AUTHOR.clinic},{' '}
-          {AUTHOR.city}
+          {site.ui.ogSubtitle}
         </div>
       </div>
     ),

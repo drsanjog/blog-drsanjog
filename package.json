@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "dev:arti": "SITE=arti next dev -p 3002",
+    "build:arti": "SITE=arti next build",
+    "start:arti": "SITE=arti next start"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.13",

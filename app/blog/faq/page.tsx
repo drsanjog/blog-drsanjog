@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { AUTHOR, SITE_URL } from '@/lib/constants'
+import { getSiteKey } from '@/lib/site'
 import JsonLd from '@/components/JsonLd'
 import Breadcrumb from '@/components/Breadcrumb'
 
@@ -116,6 +118,7 @@ const breadcrumbSchema = {
 }
 
 export default function FaqPage() {
+  if (getSiteKey() !== 'sanjog') notFound()
   return (
     <>
       <JsonLd data={faqSchema} />

@@ -1,5 +1,6 @@
 import { getAllPosts } from '@/lib/posts'
 import BlogCard from '@/components/BlogCard'
+import { site } from '@/lib/site'
 
 export { metadata } from './blog/page'
 
@@ -9,9 +10,9 @@ export default function Home() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-brand-charcoal">Medical Blog</h1>
+        <h1 className="text-3xl font-bold text-brand-charcoal">{site.ui.homeH1}</h1>
         <p className="mt-2 text-brand-charcoal/70 text-lg">
-          Evidence-based articles on plastic and reconstructive surgery.
+          {site.ui.homeSubtitle}
         </p>
       </div>
 
