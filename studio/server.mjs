@@ -19,8 +19,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlink
 import { join, extname } from 'path'
 import { spawn } from 'child_process'
 import {
-  ROOT_DIR, POSTS_DIR, IMAGES_DIR, MODEL, todayISO,
-  getExistingPosts, fetchUnsplashImage,
+  ROOT_DIR, IMAGES_DIR, MODEL, todayISO,
+  getExistingPosts, fetchUnsplashImage, resolveProfile,
   buildSystemPrompt, buildUserMessage, buildBodyImageInstructions,
   slugify, stripFences, forceDate, applyCover, deriveCoverAlt, upsertDateModified,
   parseTitle, parseCoverQuery, suggestTopic,
@@ -129,7 +129,8 @@ async function streamClaude({ system, user, onDelta }) {
 
 // ── Route: generate (SSE) ───────────────────────────────────
 async function handleGenerate(req, res) {
-  const { topicHint = '', cover = null, body = [null, null] } = JSON.parse((await readBody(req)).toString() || '{}')
+  const { topicHint = '', cover = null, body = [null, null], site = 'sanjog' } = JSON.parse((await readBody(req)).toString() || '{}')
+  const profile = resolveProfile(site)
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -143,14 +144,14 @@ async function handleGenerate(req, res) {
 
     const today = todayISO()
     const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY
-    const { existingTitles, internalLinkList } = getExistingPosts()
+    const { existingTitles, internalLinkList } = getExistingPosts(profile.postsDir)
 
     // Resolve the 2 body images: uploaded path wins; else Unsplash fallback.
-    const fallbackQueries = ['surgical consultation clinic patient', 'medical recovery hospital bed']
+    const fallbackQueries = profile.fallbackBodyQueries
     const bodyImages = []
     for (let i = 0; i < 2; i++) {
       if (body[i]) {
-        bodyImages.push({ url: body[i], credit: 'provided by Dr. Sharma' })
+        bodyImages.push({ url: body[i], credit: `provided by ${profile.label.split(' — ')[0]}` })
         sse('status', { msg: `Using your uploaded body image ${i + 1}` })
       } else {
         sse('status', { msg: `Fetching a stock body image ${i + 1} from Unsplash…` })
@@ -160,8 +161,8 @@ async function handleGenerate(req, res) {
     }
 
     const bodyImageInstructions = buildBodyImageInstructions(bodyImages)
-    const system = buildSystemPrompt(today)
-    const user = buildUserMessage({ existingTitles, internalLinkList, bodyImageInstructions, topicHint })
+    const system = buildSystemPrompt(today, site)
+    const user = buildUserMessage({ existingTitles, internalLinkList, bodyImageInstructions, topicHint, site })
 
     sse('status', { msg: 'Generating the post with Claude…' })
     let mdx = await streamClaude({ system, user, onDelta: text => sse('delta', { text }) })
@@ -174,25 +175,25 @@ async function handleGenerate(req, res) {
 
     // Resolve cover: uploaded wins; else Unsplash on the model's suggested query.
     // Alt text is always derived from the procedure — never a generic stock caption.
-    const coverAlt = deriveCoverAlt(mdx)
+    const coverAlt = deriveCoverAlt(mdx, site)
     let coverForFm
     if (cover) {
       coverForFm = { url: cover, alt: coverAlt, credit: '' }
       sse('status', { msg: 'Using your uploaded cover image' })
     } else {
-      const q = parseCoverQuery(mdx)
+      const q = parseCoverQuery(mdx, profile.fallbackCoverQuery)
       sse('status', { msg: `Fetching cover image from Unsplash: "${q}"…` })
       const c = await fetchUnsplashImage(q, UNSPLASH_KEY)
       coverForFm = c ? { url: c.url, alt: coverAlt, credit: `${c.credit} / Unsplash` } : null
     }
     mdx = applyCover(mdx, coverForFm)
 
-    const exists = existsSync(join(POSTS_DIR, `${slug}.mdx`))
+    const exists = existsSync(join(profile.postsDir, `${slug}.mdx`))
     sse('done', {
       mdx, slug, title,
       exists,
       coverUrl: coverForFm?.url ?? null,
-      liveUrl: `https://blog.drsanjog.com/blog/${slug}`,
+      liveUrl: `${profile.siteUrl}/blog/${slug}`,
     })
   } catch (e) {
     sse('failed', { error: e.message })
@@ -222,12 +223,42 @@ function cleanupOrphanUploads(keepPaths) {
   }
 }
 
-async function handlePublish(req, res) {
-  try {
-    const { mdx, slug } = JSON.parse((await readBody(req)).toString() || '{}')
-    if (!mdx || !slug) return sendJSON(res, 400, { ok: false, error: 'Missing mdx or slug' })
+// Each site's content lives on a different branch (main for Sanjog,
+// multi-site for Arti). Only one branch can be checked out on disk at a
+// time, so before writing a post we make sure we're on the right one —
+// but only by auto-switching when the tree is clean. If there are
+// unrelated uncommitted changes, we refuse rather than risk carrying them
+// across branches or losing track of them.
+async function ensureOnBranch(targetBranch) {
+  const cur = await run('git', ['branch', '--show-current'])
+  const currentBranch = cur.out.trim()
+  if (currentBranch === targetBranch) return { switched: false, from: currentBranch }
 
-    const outPath = join(POSTS_DIR, `${slug}.mdx`)
+  const status = await run('git', ['status', '--porcelain'])
+  if (status.out.trim()) {
+    throw new Error(
+      `Local repo is on branch "${currentBranch}" with uncommitted changes, but this post belongs on "${targetBranch}". ` +
+      `Commit or stash those changes first, then try publishing again.`
+    )
+  }
+
+  const checkout = await run('git', ['checkout', targetBranch])
+  if (checkout.code !== 0) {
+    throw new Error(`Could not switch to branch "${targetBranch}": ${(checkout.err || checkout.out).trim()}`)
+  }
+  return { switched: true, from: currentBranch }
+}
+
+async function handlePublish(req, res) {
+  let branchSwitch = null
+  try {
+    const { mdx, slug, site = 'sanjog' } = JSON.parse((await readBody(req)).toString() || '{}')
+    if (!mdx || !slug) return sendJSON(res, 400, { ok: false, error: 'Missing mdx or slug' })
+    const profile = resolveProfile(site)
+
+    branchSwitch = await ensureOnBranch(profile.gitBranch)
+
+    const outPath = join(profile.postsDir, `${slug}.mdx`)
     // Re-publishing an existing slug is an edit → stamp dateModified with today
     // (keeps the original datePublished). New posts keep publish date only.
     const isEdit = existsSync(outPath)
@@ -240,14 +271,14 @@ async function handlePublish(req, res) {
     const imgRefs = [...new Set((finalMdx.match(/\/images\/blog\/[A-Za-z0-9._-]+/g) || []))]
     cleanupOrphanUploads(imgRefs)
 
-    const liveUrl = `https://blog.drsanjog.com/blog/${slug}`
+    const liveUrl = `${profile.siteUrl}/blog/${slug}`
     writeFileSync(join(ROOT_DIR, '.last-published-url'), liveUrl, 'utf8')
 
     // git add (post + only the referenced images), commit, push
-    const toAdd = [`content/posts/${slug}.mdx`, ...imgRefs.map(p => 'public' + p)]
+    const toAdd = [`${profile.postsDirRel}/${slug}.mdx`, ...imgRefs.map(p => 'public' + p)]
     await run('git', ['add', ...toAdd])
-    const commit = await run('git', ['commit', '-m', `studio: publish ${slug}`])
-    const push = await run('git', ['push', 'origin', 'main'])
+    const commit = await run('git', ['commit', '-m', `studio: publish ${slug} (${profile.key})`])
+    const push = await run('git', ['push', 'origin', profile.gitBranch])
     if (push.code !== 0) {
       return sendJSON(res, 500, {
         ok: false, error: 'git push failed', detail: (push.err || push.out).trim(),
@@ -257,6 +288,9 @@ async function handlePublish(req, res) {
     // Ping indexing (non-fatal)
     const ping = await run('node', ['scripts/ping-indexing.mjs'], { env: process.env })
 
+    // Best-effort: restore whatever branch was checked out before publishing.
+    if (branchSwitch?.switched) await run('git', ['checkout', branchSwitch.from])
+
     sendJSON(res, 200, {
       ok: true,
       liveUrl,
@@ -265,6 +299,7 @@ async function handlePublish(req, res) {
       ping: (ping.out || ping.err).trim(),
     })
   } catch (e) {
+    if (branchSwitch?.switched) await run('git', ['checkout', branchSwitch.from]).catch(() => {})
     sendJSON(res, 500, { ok: false, error: e.message })
   }
 }
@@ -277,9 +312,11 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       return res.end(html)
     }
-    if (req.method === 'GET' && req.url === '/api/suggest') {
-      const { existingTitles } = getExistingPosts()
-      return sendJSON(res, 200, { topic: suggestTopic(existingTitles) })
+    if (req.method === 'GET' && req.url.startsWith('/api/suggest')) {
+      const site = new URL(req.url, `http://x`).searchParams.get('site') || 'sanjog'
+      const profile = resolveProfile(site)
+      const { existingTitles } = getExistingPosts(profile.postsDir)
+      return sendJSON(res, 200, { topic: suggestTopic(existingTitles, site) })
     }
     if (req.method === 'POST' && req.url === '/api/upload') {
       const { dataUrl, filename } = JSON.parse((await readBody(req)).toString() || '{}')

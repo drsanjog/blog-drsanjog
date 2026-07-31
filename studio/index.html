@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Dr Sanjog — Blog Studio</title>
+<title>Blog Studio</title>
 <style>
   :root {
     --bg: #f4f1ec; --panel: #ffffff; --ink: #2b2b2b; --muted: #8a8578;
@@ -74,12 +74,21 @@
     border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; vertical-align:-2px; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .empty { color:var(--muted); font-size:13px; text-align:center; padding:60px 20px; }
+  .siteswitch { display:flex; gap:6px; background:var(--bg); border:1px solid var(--line);
+    border-radius:10px; padding:3px; margin-left:8px; }
+  .siteswitch button { border:0; background:transparent; color:var(--muted); font-size:12.5px;
+    font-weight:600; padding:6px 12px; border-radius:8px; cursor:pointer; }
+  .siteswitch button.active { background:var(--accent); color:var(--accent-ink); }
 </style>
 </head>
 <body>
 <header>
   <span class="dot"></span>
-  <h1>Blog Studio · drsanjog.com</h1>
+  <h1 id="siteTitle">Blog Studio</h1>
+  <div class="siteswitch" id="siteSwitch">
+    <button data-site="sanjog" class="active">Dr. Sanjog</button>
+    <button data-site="arti">Dr. Arti</button>
+  </div>
   <span class="sub">local · review before publish</span>
 </header>
 
@@ -142,9 +151,38 @@ const $ = s => document.querySelector(s);
 const uploads = { cover:null, body0:null, body1:null };
 let currentMdx = '', currentSlug = '', editing = false;
 
+// ---- site selector: Dr. Sanjog Sharma vs Dr. Arti Sharma ----
+const SITE_LABELS = { sanjog: 'Blog Studio · drsanjog.com', arti: 'Blog Studio · drarti.in' };
+let currentSite = localStorage.getItem('blogStudioSite') || 'sanjog';
+
+function applySiteUI(){
+  $('#siteTitle').textContent = SITE_LABELS[currentSite];
+  document.querySelectorAll('#siteSwitch button').forEach(b => b.classList.toggle('active', b.dataset.site === currentSite));
+}
+applySiteUI();
+
+document.querySelectorAll('#siteSwitch button').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    if (btn.dataset.site === currentSite) return;
+    currentSite = btn.dataset.site;
+    localStorage.setItem('blogStudioSite', currentSite);
+    applySiteUI();
+    // Switching doctor resets the current draft — a half-written post for
+    // one doctor shouldn't be published under the other.
+    currentMdx = ''; currentSlug = ''; editing = false;
+    $('#editor').style.display = 'none'; $('#stream').style.display = 'block';
+    $('#stream').innerHTML = '<div class="empty">Your post will stream in here as it\'s written.<br>Add a topic and photos on the left, then hit Generate.</div>';
+    $('#ptitle').textContent = 'Draft'; $('#pslug').textContent = 'no post yet'; $('#pslug').className = 'badge';
+    $('#toggleEdit').style.display = 'none'; $('#actions').style.display = 'none';
+    $('#toast').className = 'toast';
+    const t = await fetchSuggestion();
+    $('#topic').value = t;
+  });
+});
+
 // ---- default topic suggestion (from the established content rules) ----
 async function fetchSuggestion(){
-  try { const r = await fetch('/api/suggest'); const j = await r.json(); return j.topic || ''; }
+  try { const r = await fetch('/api/suggest?site=' + currentSite); const j = await r.json(); return j.topic || ''; }
   catch { return ''; }
 }
 (async () => { const t = await fetchSuggestion(); const box = $('#topic'); if (!box.value.trim()) box.value = t; })();
@@ -196,7 +234,7 @@ $('#go').addEventListener('click', async () => {
   setStatus('Starting…', true);
 
   const res = await fetch('/api/generate', { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ topicHint: $('#topic').value, cover: uploads.cover, body: [uploads.body0, uploads.body1] }) });
+    body: JSON.stringify({ topicHint: $('#topic').value, cover: uploads.cover, body: [uploads.body0, uploads.body1], site: currentSite }) });
 
   const reader = res.body.getReader();
   const dec = new TextDecoder();
@@ -251,7 +289,7 @@ $('#publish').addEventListener('click', async () => {
   toast('<span class="spin"></span> Publishing — writing MDX, git push, pinging indexing…', 'ok');
   try {
     const r = await fetch('/api/publish', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ mdx, slug: currentSlug }) });
+      body: JSON.stringify({ mdx, slug: currentSlug, site: currentSite }) });
     const j = await r.json();
     if (j.ok) {
       toast('✅ Published! Live shortly at <a href="'+j.liveUrl+'" target="_blank">'+j.liveUrl.replace('https://','')+'</a><br><span class="meta">Railway is deploying. Indexing pinged.</span>', 'ok');

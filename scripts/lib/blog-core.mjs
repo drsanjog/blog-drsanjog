@@ -17,6 +17,7 @@ export const ROOT_DIR = join(__dirname, '..', '..')
 export const POSTS_DIR = join(ROOT_DIR, 'content', 'posts')
 export const PUBLIC_DIR = join(ROOT_DIR, 'public')
 export const IMAGES_DIR = join(PUBLIC_DIR, 'images', 'blog')
+const ARTI_POSTS_DIR = join(ROOT_DIR, 'content', 'arti', 'posts')
 
 // Same model the scheduled task uses — keep in sync in one place.
 export const MODEL = 'claude-sonnet-4-6'
@@ -24,15 +25,48 @@ export const MODEL = 'claude-sonnet-4-6'
 export const todayISO = () => new Date().toISOString().split('T')[0]
 
 // ────────────────────────────────────────────────────────────
+// Multi-site profiles — Blog Studio's "site" selector reads from this.
+// generate-post.mjs (the autonomous scheduled task) never passes a `site`
+// argument, so every function below defaults to 'sanjog' and behaves
+// exactly as before this was added.
+// ────────────────────────────────────────────────────────────
+export const SITE_PROFILES = {
+  sanjog: {
+    key: 'sanjog',
+    label: 'Dr. Sanjog Sharma — blog.drsanjog.com',
+    postsDir: POSTS_DIR,
+    postsDirRel: 'content/posts',
+    siteUrl: 'https://blog.drsanjog.com',
+    gitBranch: 'main',
+    fallbackCoverQuery: 'plastic surgery medical clinic',
+    fallbackBodyQueries: ['surgical consultation clinic patient', 'medical recovery hospital bed'],
+  },
+  arti: {
+    key: 'arti',
+    label: 'Dr. Arti Sharma — blog.drarti.in',
+    postsDir: ARTI_POSTS_DIR,
+    postsDirRel: 'content/arti/posts',
+    siteUrl: 'https://blog.drarti.in',
+    gitBranch: 'multi-site',
+    fallbackCoverQuery: 'gynaecologist doctor consultation clinic',
+    fallbackBodyQueries: ['woman doctor patient consultation clinic', 'healthy lifestyle woman wellness'],
+  },
+}
+
+export function resolveProfile(site) {
+  return SITE_PROFILES[site] || SITE_PROFILES.sanjog
+}
+
+// ────────────────────────────────────────────────────────────
 // Existing posts — so Claude doesn't repeat topics and can link internally
 // ────────────────────────────────────────────────────────────
-export function getExistingPosts() {
-  const posts = existsSync(POSTS_DIR)
-    ? readdirSync(POSTS_DIR)
+export function getExistingPosts(postsDir = POSTS_DIR) {
+  const posts = existsSync(postsDir)
+    ? readdirSync(postsDir)
         .filter(f => f.endsWith('.mdx'))
         .map(f => {
           const slug = f.replace('.mdx', '')
-          const raw = readFileSync(join(POSTS_DIR, f), 'utf8')
+          const raw = readFileSync(join(postsDir, f), 'utf8')
           const titleMatch = raw.match(/^title:\s*"(.+)"/m)
           const title = titleMatch ? titleMatch[1] : slug
           return { slug, title }
@@ -106,19 +140,22 @@ export function parseTitle(mdx) {
   return m ? m[1] : null
 }
 
-export function parseCoverQuery(mdx) {
+export function parseCoverQuery(mdx, fallback = 'plastic surgery medical clinic') {
   const m = mdx.match(/^coverImage:\s*"(.+)"/m)
-  return m ? m[1] : 'plastic surgery medical clinic'
+  return m ? m[1] : fallback
 }
 
 // Build a descriptive, procedure-relevant cover alt from the post itself —
 // never reuse a generic stock-photo caption ("person in blue shirt holding paper").
-export function deriveCoverAlt(mdx) {
-  const title = parseTitle(mdx) || 'body contouring procedure'
+export function deriveCoverAlt(mdx, site = 'sanjog') {
+  const isArti = site === 'arti'
+  const title = parseTitle(mdx) || (isArti ? 'gynaecology consultation' : 'body contouring procedure')
   const proc = (mdx.match(/^procedureName:\s*"(.+)"/m) || [])[1]
   const subject = proc || title
-  return `Clinical reference image for ${subject} — plastic surgery by Dr. Sanjog Sharma, Dubai and Bengaluru`
-    .replace(/"/g, "'")
+  const suffix = isArti
+    ? '— obstetrics & gynaecology care by Dr. Arti Sharma, Bengaluru'
+    : '— plastic surgery by Dr. Sanjog Sharma, Dubai and Bengaluru'
+  return `Clinical reference image for ${subject} ${suffix}`.replace(/"/g, "'")
 }
 
 /**
@@ -141,7 +178,8 @@ export function applyCover(mdx, cover) {
 // ────────────────────────────────────────────────────────────
 // Prompt construction
 // ────────────────────────────────────────────────────────────
-export function buildSystemPrompt(today = todayISO()) {
+export function buildSystemPrompt(today = todayISO(), site = 'sanjog') {
+  if (site === 'arti') return buildArtiSystemPrompt(today)
   return `You write SEO/AEO/GEO-optimised blog posts for Dr. Sanjog Sharma's medical blog at blog.drsanjog.com.
 
 ═══════════════════════════════════════
@@ -371,6 +409,218 @@ faqs:
 ---`
 }
 
+function buildArtiSystemPrompt(today = todayISO()) {
+  return `You write SEO/AEO/GEO-optimised blog posts for Dr. Arti Sharma's medical blog at blog.drarti.in.
+
+═══════════════════════════════════════
+AUTHOR — E-E-A-T PROFILE
+═══════════════════════════════════════
+
+Name: Dr. Arti Sharma, MBBS, DNB (Obstetrics & Gynaecology), Diploma in Cosmetic Gynaecology
+Specialty: Obstetrics & Gynaecology, with a cosmetic gynaecology sub-practice
+Registration: Karnataka Medical Council (KMC) Reg. No. 109317
+
+Practice (Bengaluru):
+• Cloudnine Hospital, Sarjapur Road, Bengaluru — obstetrics, delivery, general gynaecology
+• Docube Clinic, Doddakannelli, Bengaluru — general gynaecology
+• Aesthetica Veda, Koramangala, Bengaluru — cosmetic gynaecology
+Bengaluru: +91 90196 38165 (main) | +91 97414 35255 (Aesthetica Veda / cosmetic gynaecology)
+
+Training: MBBS — Kasturba Medical College, Manipal Academy of Higher Education; DNB (Obstetrics & Gynaecology) — National Board of Examinations, New Delhi; Cosmetic Gynaecology diploma — University Medicine Greifswald, Germany, with the Indo-German Board of Aesthetic Medicine & Surgery
+
+═══════════════════════════════════════
+STRATEGIC POSITIONING
+═══════════════════════════════════════
+
+Dr. Sharma is a Bengaluru-based obstetrician and gynaecologist whose practice spans the full span of women's health — antenatal care and delivery, routine gynaecology, and cosmetic gynaecology — all under one practitioner. Blog angle: an approachable, evidence-based resource that treats every stage of a woman's reproductive life as connected, from adolescence through pregnancy to menopause, delivered with the compassion her practice is known for locally. This positioning should feel earned and natural — never promotional.
+
+═══════════════════════════════════════
+ENTITY AND GEO CONSISTENCY — MANDATORY
+═══════════════════════════════════════
+
+- Always use full names at first mention: "Federation of Obstetric and Gynaecological Societies of India (FOGSI)", then "FOGSI" thereafter
+- Dr. Arti Sharma's credential string ("MBBS, DNB (Obstetrics & Gynaecology)") must appear at least once in the article body
+- Location: always "Bengaluru" (never "Bangalore")
+- Clinic names must be exact: "Cloudnine Hospital, Sarjapur Road, Bengaluru"; "Docube Clinic, Doddakannelli, Bengaluru"; "Aesthetica Veda, Koramangala, Bengaluru" (cosmetic gynaecology only — do not attribute obstetric/general gynaecology topics to Aesthetica Veda)
+- Never use: "leading", "best", "No. 1", "world-class", "top", "premier" — no superlatives
+- Never use: "you will get", "guaranteed", "assured results", "promise" — no guaranteed outcomes
+
+═══════════════════════════════════════
+COMPLIANCE & TONE — MANDATORY
+═══════════════════════════════════════
+
+- NO patient testimonials or reviews
+- NO before/after patient images (especially for cosmetic gynaecology topics)
+- NO superlatives, NO guaranteed outcomes, NO comparative claims against named other doctors or clinics
+- Content must be factual and educational only
+- This is intimate, sensitive medical content. Every topic — including cosmetic gynaecology — must be written in a clinical, professional, tasteful register, exactly as a hospital patient-education leaflet would. Never sensationalise, never use explicit or suggestive language, never frame a topic for titillation. Discomfort is a medical symptom to be discussed plainly and respectfully, not euphemised or sensationalised.
+- Where a topic concerns a minor's health (e.g. adolescent menstrual health), keep language age-appropriate and directed at a parent/guardian reader.
+
+═══════════════════════════════════════
+FIRST-PERSON CLINICAL VOICE — MANDATORY
+═══════════════════════════════════════
+
+Every post MUST include 2–3 first-person paragraphs woven naturally into the article. Use framings such as:
+- "In my practice at Cloudnine Hospital, Sarjapur Road..."
+- "When I assess patients for this at Docube Clinic..."
+- "Patients who come to me at Aesthetica Veda for a cosmetic gynaecology consultation often ask..."
+- "Across my obstetric and gynaecological practice in Bengaluru, the pattern I see is..."
+- "Over the years managing this condition, the single most common misconception I encounter is..."
+
+These paragraphs must feel like genuine clinical insight, not marketing copy.
+
+═══════════════════════════════════════
+ARTICLE ARCHETYPES — ROTATE THROUGH THESE
+═══════════════════════════════════════
+
+1. CONDITION EXPLAINER — what a condition is, why it happens, how it presents
+2. SYMPTOM/DIAGNOSIS GUIDE — how a condition is diagnosed, what tests mean
+3. TREATMENT OPTIONS — lifestyle, medical, and (where relevant) surgical management
+4. WHEN TO SEE A DOCTOR — red-flag symptoms and appropriate urgency
+5. PREGNANCY & POSTPARTUM — antenatal, delivery, and postpartum topics
+6. PROCEDURAL EXPLAINER — for genuine procedures only (e.g. hymenoplasty, vaginal rejuvenation, MTP): what happens, step by step
+7. MYTH VS FACT — common misconceptions about a condition or procedure, corrected with evidence
+8. PATIENT EDUCATION / FAQ-DRIVEN — built around the most common questions patients ask about a topic
+
+Pick the archetype that best fits the topic. Vary archetypes across posts. Not every topic is a procedure — most gynaecological and obstetric topics (PCOS, endometriosis, fibroids, menstrual disorders, pregnancy care) are medical/diagnostic, not surgical, and should NOT force a step-by-step "how it's performed" structure.
+
+═══════════════════════════════════════
+STRUCTURAL REQUIREMENTS
+═══════════════════════════════════════
+
+WORD COUNT: 1,800–2,800 words in the article body (excluding frontmatter YAML)
+
+OPENING — MANDATORY FORMAT:
+- First sentence: direct definition of the condition/topic.
+  Format: "[Condition] is [what it is] — [key clinical fact in one clause]."
+- Second sentence: state who the article is for and why it is relevant to them.
+- Do NOT open with a statistic, a rhetorical question, or a general context paragraph.
+
+MANDATORY SECTIONS (choose and order to fit the topic — not every section applies to every topic):
+1. Definition and mechanism / what is happening in the body
+2. Symptoms or how the condition presents (table format where useful)
+3. Diagnosis — how it is confirmed, what tests/criteria are used
+4. Treatment or management options (table format where useful)
+5. FOR GENUINE PROCEDURES ONLY (hymenoplasty, vaginal rejuvenation, MTP, etc.): step-by-step technique — required for HowTo schema
+6. When to see a gynaecologist / red flags
+7. Cost section — ONLY for procedures with a genuine price range (mainly cosmetic gynaecology); note that an exact figure requires consultation. Skip entirely for non-procedural medical topics (PCOS, endometriosis, general gynaecology) — do not invent a price for a routine medical consultation.
+8. Key Points — a "## Key Points" H2 near the end, before References, with 4–6 concise single-sentence bullet takeaways
+9. References (3–6 REAL, verifiable citations — see rules below)
+10. DO NOT write a medical disclaimer or author block — the site renders these automatically
+
+CLOSING "KEY POINTS" BLOCK — MANDATORY:
+- Include a "## Key Points" section with 4–6 single-line bullets summarising the most important takeaways.
+- Place it near the end of the article, before the References section.
+- Each bullet is one short factual sentence — no superlatives, no guarantees.
+
+HEADINGS:
+- One H1 only (matches the title tag closely)
+- 5–8 H2 sections covering the applicable sections above
+- H3s for sub-symptoms, sub-criteria, or comparison sub-sections
+- Every heading must contain at least one keyword or entity name
+
+IMAGES — MINIMUM 2 PER ARTICLE:
+- The cover image is provided by the system — do not add it in the body
+- Embed the 2 body images provided in the user message using markdown image syntax, placed where topically relevant (e.g. after the "what causes it" section, after the treatment/lifestyle section)
+- Each image MUST have a descriptive alt tag (8–15 words) that is clinically accurate and tasteful — never a generic or suggestive caption
+- Add a caption below each image as an italic line
+
+INTERNAL LINKS:
+- Link to existing published posts on the blog where topically relevant, using descriptive anchor text (not "click here")
+- If fewer than 3 existing posts are topically relevant, link to as many as genuinely fit — never force an irrelevant link just to hit a count
+
+REFERENCES — MANDATORY AND MUST BE REAL:
+- 3–6 references. Every single one MUST be a real, verifiable, existing publication or guideline — never invent an author, journal, volume, page range, or DOI, even one that "sounds plausible". If you are not certain a specific paper's citation details are accurate, cite a well-established guideline you are confident is real instead (e.g. FOGSI guidelines, ACOG Practice Bulletins, WHO guidance, Cochrane reviews, NICE guidelines, the Rotterdam criteria, Endocrine Society guidelines) — or omit the citation rather than fabricate one.
+- Format: Author(s)/Organisation. Title. *Journal or Publisher*. Year;Vol(Issue):Pages.
+- Every reference MUST be hyperlinked to its real DOI or PubMed page:
+  DOI: <a href="https://doi.org/[DOI]" target="_blank" rel="noopener noreferrer">
+  PubMed: <a href="https://pubmed.ncbi.nlm.nih.gov/[PMID]/" target="_blank" rel="noopener noreferrer">
+- Cite inline in the body using bracketed numbers, e.g. [1], or [1,2], matching the reference list order.
+
+FAQ — 3 TO 6 QUESTIONS:
+- Questions must mirror exact patient search phrasing (how, can, is, what, how much, how long, does)
+- Each answer: direct answer in first sentence (15–25 words), then 1–2 supporting sentences
+- Total answer length: 40–60 words
+- The FAQ frontmatter must EXACTLY match the FAQ section rendered by the site (the frontmatter IS the single source — do not also write a duplicate "Frequently Asked Questions" section in the article body; the site renders the accordion automatically from frontmatter)
+
+REVIEW DATE: Include "_Last medically reviewed by Dr. Arti Sharma, MBBS, DNB (Obstetrics & Gynaecology), KMC Reg. No. 109317 — ${today}_" as a small italic line after the opening paragraph, followed by a horizontal rule (---).
+
+TONE: Precise, evidence-based, compassionate but not saccharine. The voice of a gynaecologist who communicates clinical reality clearly and puts patients at ease. Not promotional. Not jargon-heavy. Never explicit or suggestive, even for cosmetic gynaecology topics.
+
+═══════════════════════════════════════
+OUTPUT FORMAT — CRITICAL
+═══════════════════════════════════════
+
+Return ONLY a valid MDX file. No preamble, no explanation, no code fences.
+
+FRONTMATTER SCHEMA:
+---
+title: "Full descriptive H1 title (up to ~70 characters is fine — this is the on-page heading)"
+seoTitle: "Concise <title> tag — MAX 45 CHARACTERS, primary keyword or condition only. Do NOT include the brand/author name; the site automatically appends ' | Dr. Arti Sharma'."
+description: "Meta description, 150–160 characters and NEVER more than 160. Include the primary keyword, a clear reason to click, and 'Bengaluru' as a geographic signal."
+date: "${today}"
+targetKeyword: "primary seo keyword phrase"
+keywords: ["primary keyword", "long-tail variant 1", "long-tail variant 2", "long-tail variant 3", "bengaluru keyword"]
+author: "Dr. Arti Sharma"
+tags: ["tag1", "tag2", "tag3"]
+coverImage: "3-4 word unsplash search term for a relevant, tasteful medical/clinical image — never a suggestive or intimate-looking image"
+# The six procedure* fields and howToName/howToSteps below are OPTIONAL —
+# include them ONLY when the topic is a genuine clinical procedure
+# (hymenoplasty, vaginal rejuvenation, MTP, etc). Omit entirely for
+# medical/diagnostic topics like PCOS, endometriosis, or pregnancy care.
+procedureName: "Full Procedure Name (omit if not applicable)"
+procedureAlt: "Abbreviation if applicable, else omit this line"
+procedureBodyLocation: "e.g. Vaginal/vulvar region (omit if not applicable)"
+procedurePrep: "1–2 sentences on pre-procedure preparation (omit if not applicable)"
+procedureHow: "2–3 sentences on the technique (omit if not applicable)"
+procedureFollowup: "1–2 sentences on recovery and follow-up (omit if not applicable)"
+howToName: "How [Procedure Name] is Performed (omit if not applicable)"
+howToSteps:
+  - name: "Step 1 Name"
+    text: "Step 1 description in 1–2 sentences."
+faqs:
+  - question: "Exact patient-search-style question?"
+    answer: "Direct answer in first sentence (15–25 words). Supporting detail in 1–2 sentences. Total 40–60 words."
+  - question: "..."
+    answer: "..."
+---`
+}
+
+const ARTI_TOPIC_IDEAS = `Obstetrics & Pregnancy:
+• Antenatal care — what to expect at each trimester
+• Normal delivery vs caesarean section — how the decision is made
+• Danger signs in pregnancy — when to seek urgent care
+• Postpartum recovery — physical and emotional changes in the first six weeks
+• Nutrition during pregnancy — what to eat and what to avoid
+
+Menstrual & Hormonal Health:
+• Dysmenorrhea (painful periods) — causes and when it's not normal
+• Irregular periods — common causes beyond PCOS
+• Menstrual hygiene and common infections
+
+Gynaecological Conditions:
+• Endometriosis — symptoms, diagnosis, and management options
+• Uterine fibroids — when they need treatment and when they don't
+• Vaginitis — causes, symptoms, and treatment of vaginal infections
+• Ovarian cysts — when to worry and when to watch and wait
+• Dyspareunia (painful intercourse) — causes and treatment approaches
+• Vaginismus — what it is and how it is treated
+
+Family Planning:
+• Medical termination of pregnancy (MTP) — options and what to expect
+• Surgical termination of pregnancy — dilation and evacuation explained
+• Contraception options — an overview for informed choice
+
+Cosmetic Gynaecology:
+• Introduction to cosmetic gynaecology — what it covers and who it's for
+• Vaginal rejuvenation — what it addresses and what to expect
+• Hymenoplasty — a factual, non-judgemental clinical overview
+
+Preventive & General Women's Health:
+• Routine gynaecological check-ups — what happens and how often
+• Cervical screening (Pap smear/HPV test) — why it matters and how often
+• Menopause — symptoms, timeline, and managing the transition`
+
 const TOPIC_IDEAS = `Body Contouring & Liposuction:
 • High-definition (HD) liposuction — achieving muscle definition with VASER
 • Mommy makeover — which procedures are combined and why
@@ -410,8 +660,9 @@ Face & Other:
 • Facial fat grafting — restoring volume without implants`
 
 // Flat list of the topic-idea phrases (the "• …" bullets above).
-export function topicIdeaList() {
-  return TOPIC_IDEAS.split('\n')
+export function topicIdeaList(site = 'sanjog') {
+  const source = site === 'arti' ? ARTI_TOPIC_IDEAS : TOPIC_IDEAS
+  return source.split('\n')
     .filter(l => l.trim().startsWith('•'))
     .map(l => l.replace(/^\s*•\s*/, '').trim())
     .filter(Boolean)
@@ -436,9 +687,9 @@ function distinctiveTokens(phrase) {
  * pick a topic-idea phrase whose procedure isn't already covered by a
  * published title. Falls back to any idea if everything's been covered.
  */
-export function suggestTopic(existingTitles = []) {
+export function suggestTopic(existingTitles = [], site = 'sanjog') {
   const titles = existingTitles.map(t => t.toLowerCase())
-  const ideas = topicIdeaList()
+  const ideas = topicIdeaList(site)
   const isCovered = idea => {
     const toks = distinctiveTokens(idea)
     return toks.length > 0 && titles.some(t => toks.every(tok => t.includes(tok)))
@@ -455,9 +706,12 @@ export function suggestTopic(existingTitles = []) {
  * @param {string}   o.internalLinkList
  * @param {string}   o.bodyImageInstructions
  * @param {string}   [o.topicHint]  Doctor's own topic / steering note (optional)
+ * @param {string}   [o.site]       'sanjog' (default) or 'arti'
  */
-export function buildUserMessage({ existingTitles, internalLinkList, bodyImageInstructions, topicHint }) {
+export function buildUserMessage({ existingTitles, internalLinkList, bodyImageInstructions, topicHint, site = 'sanjog' }) {
+  const isArti = site === 'arti'
   const hint = (topicHint || '').trim()
+  const ideaText = isArti ? ARTI_TOPIC_IDEAS : TOPIC_IDEAS
 
   const topicSection = hint
     ? `DOCTOR'S TOPIC & DIRECTION FOR THIS POST — FOLLOW THIS CLOSELY:
@@ -466,14 +720,32 @@ ${hint}
 Treat the doctor's direction above as the required subject and angle for this post. The topic-idea list below is only background inspiration — do not override the doctor's instruction with it.`
     : `TOPIC IDEAS — pick the one that best builds topical authority and hasn't been covered:
 
-${TOPIC_IDEAS}`
+${ideaText}`
 
-  return `Write a new blog post on a topic relevant to Dr. Sanjog Sharma's practice.
+  const practiceLabel = isArti ? "Dr. Arti Sharma's practice" : "Dr. Sanjog Sharma's practice"
+  const wordCount = isArti ? '1,800–2,800' : '2,000–3,000'
+  const geoLine = isArti
+    ? '- Geographic anchor: mention at least one Bengaluru clinic by exact name'
+    : '- Geographic anchors: mention both Dubai and Bengaluru clinics'
+  const internalLinksHeading = isArti
+    ? 'AVAILABLE INTERNAL LINKS — use where topically relevant, with descriptive anchor text:'
+    : 'AVAILABLE INTERNAL LINKS — use at least 3 of these in the article body with descriptive anchor text:'
+  const internalLinksLine = isArti
+    ? '- Link to existing posts where genuinely topically relevant — do not force a link count if few exist yet'
+    : '- Minimum 3 internal links with keyword-rich anchor text'
+  const referencesLine = isArti
+    ? '- 3–6 references, every one a REAL, verifiable publication or guideline — never a fabricated or "plausible-sounding" citation — with DOI/PubMed HTML links and inline [1]-style citations'
+    : '- Minimum 4 references with DOI/PubMed HTML links and inline superscript citations'
+  const faqLine = isArti
+    ? '- 3–6 FAQs in frontmatter only — do not duplicate them as a body section, the site renders the accordion automatically'
+    : '- 5–8 FAQs in frontmatter that match the article body FAQ section exactly'
+
+  return `Write a new blog post on a topic relevant to ${practiceLabel}.
 
 ALREADY PUBLISHED — do not repeat these topics:
 ${existingTitles.map(t => `• ${t}`).join('\n')}
 
-AVAILABLE INTERNAL LINKS — use at least 3 of these in the article body with descriptive anchor text:
+${internalLinksHeading}
 ${internalLinkList || '  (none yet — this is the first post)'}
 
 BODY IMAGES — embed BOTH of these in the article body with descriptive alt text and captions:
@@ -485,14 +757,14 @@ Write the complete MDX file now, starting with the --- frontmatter block.
 
 Requirements:
 - Choose one archetype from the system prompt and apply it fully
-- 2,000–3,000 words in the article body
+- ${wordCount} words in the article body
 - Include the "Last medically reviewed" italic line after the opening paragraph
 - First-person clinical voice: 2–3 paragraphs
-- Geographic anchors: mention both Dubai and Bengaluru clinics
+${geoLine}
 - Embed both body images with descriptive alt text and italic captions
-- Minimum 3 internal links with keyword-rich anchor text
-- Minimum 4 references with DOI/PubMed HTML links and inline superscript citations
-- 5–8 FAQs in frontmatter that match the article body FAQ section exactly
+${internalLinksLine}
+${referencesLine}
+${faqLine}
 - All entity/geo consistency rules apply`
 }
 
