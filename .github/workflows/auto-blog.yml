@@ -1,0 +1,39 @@
+name: Auto-publish blog post
+
+on:
+  schedule:
+    - cron: '30 3 * * 2'   # Tuesday  9:00 AM IST (3:30 UTC)
+    - cron: '30 3 * * 5'   # Friday   9:00 AM IST (3:30 UTC)
+  workflow_dispatch:         # Manual trigger from GitHub Actions tab
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Generate blog post
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+        run: node scripts/generate-post.mjs
+
+      - name: Commit and push
+        run: |
+          git config user.name "blog-bot[bot]"
+          git config user.email "blog-bot[bot]@users.noreply.github.com"
+          git add content/posts/
+          git diff --staged --quiet \
+            && echo "Nothing to commit" \
+            || (git commit -m "auto: publish blog post $(date -u +%Y-%m-%d)" && git push)
