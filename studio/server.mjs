@@ -212,9 +212,21 @@ function run(cmd, args, opts = {}) {
   })
 }
 
-// Delete studio-uploaded images that the published MDX doesn't reference.
+// Delete studio-uploaded images that no post — the one being published, or
+// any already-published post — references. Only scanning the current
+// draft's refs here would delete images still used by other live posts
+// the moment an unrelated draft is published.
 function cleanupOrphanUploads(keepPaths) {
   const keep = new Set(keepPaths.map(p => p.replace('/images/blog/', '')))
+  if (existsSync(POSTS_DIR)) {
+    for (const f of readdirSync(POSTS_DIR)) {
+      if (!f.endsWith('.mdx')) continue
+      const text = readFileSync(join(POSTS_DIR, f), 'utf8')
+      for (const m of text.matchAll(/\/images\/blog\/[A-Za-z0-9._-]+/g)) {
+        keep.add(m[0].replace('/images/blog/', ''))
+      }
+    }
+  }
   for (const f of readdirSync(IMAGES_DIR)) {
     if (f.startsWith('studio-') && !keep.has(f)) {
       try { unlinkSync(join(IMAGES_DIR, f)) } catch {}
@@ -245,8 +257,17 @@ async function handlePublish(req, res) {
 
     // git add (post + only the referenced images), commit, push
     const toAdd = [`content/posts/${slug}.mdx`, ...imgRefs.map(p => 'public' + p)]
-    await run('git', ['add', ...toAdd])
+    for (const p of imgRefs.map(r => join(ROOT_DIR, 'public' + r))) {
+      if (!existsSync(p)) throw new Error(`Publish aborted: referenced image is missing on disk: ${p}`)
+    }
+    const add = await run('git', ['add', ...toAdd])
+    if (add.code !== 0) {
+      return sendJSON(res, 500, { ok: false, error: 'git add failed', detail: (add.err || add.out).trim() })
+    }
     const commit = await run('git', ['commit', '-m', `studio: publish ${slug}`])
+    if (commit.code !== 0) {
+      return sendJSON(res, 500, { ok: false, error: 'git commit failed', detail: (commit.err || commit.out).trim() })
+    }
     const push = await run('git', ['push', 'origin', 'main'])
     if (push.code !== 0) {
       return sendJSON(res, 500, {
