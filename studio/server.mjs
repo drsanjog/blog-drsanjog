@@ -230,12 +230,29 @@ function run(cmd, args, opts = {}) {
   })
 }
 
-// Delete studio-uploaded images that no post — the one being published, or
-// any already-published post on either site's branch — references. Only
-// scanning the current draft's refs here would delete images still used by
-// other live posts the moment an unrelated draft is published.
-function cleanupOrphanUploads(keepPaths) {
+// Delete studio-uploaded images that nothing references.
+//
+// "Nothing" has to be judged across both branches. Each site's posts live on
+// its own branch, so scanning only the checked-out working tree cannot see the
+// other site's posts — it deleted images belonging to live posts on the branch
+// that happened not to be checked out.
+//
+// Anything git tracks is therefore off limits: a tracked image belongs to a
+// published post. Deleting one leaves that post pointing at a missing file, and
+// leaves a tracked deletion behind that blocks the next cross-branch publish.
+async function cleanupOrphanUploads(keepPaths) {
   const keep = new Set(keepPaths.map(p => p.replace('/images/blog/', '')))
+
+  for (const ref of Object.values(SITE_PROFILES).map(p => p.gitBranch)) {
+    const tree = await run('git', ['ls-tree', '-r', '--name-only', ref, 'public/images/blog/'])
+    if (tree.code !== 0) continue
+    for (const line of tree.out.split('\n')) {
+      const name = line.trim().split('/').pop()
+      if (name) keep.add(name)
+    }
+  }
+
+  // Also spare anything an on-disk draft still points at, published or not.
   for (const dir of Object.values(SITE_PROFILES).map(p => p.postsDir)) {
     if (!existsSync(dir)) continue
     for (const f of readdirSync(dir)) {
@@ -307,7 +324,7 @@ async function handlePublish(req, res) {
 
     // Which local images does this post reference?
     const imgRefs = [...new Set((finalMdx.match(/\/images\/blog\/[A-Za-z0-9._-]+/g) || []))]
-    cleanupOrphanUploads(imgRefs)
+    await cleanupOrphanUploads(imgRefs)
 
     const liveUrl = `${profile.siteUrl}/blog/${slug}`
     writeFileSync(join(ROOT_DIR, '.last-published-url'), liveUrl, 'utf8')
