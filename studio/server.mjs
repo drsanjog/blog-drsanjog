@@ -238,20 +238,28 @@ function cleanupOrphanUploads(keepPaths) {
 
 // Each site's content lives on a different branch (main for Sanjog,
 // multi-site for Arti). Only one branch can be checked out on disk at a
-// time, so before writing a post we make sure we're on the right one —
-// but only by auto-switching when the tree is clean. If there are
-// unrelated uncommitted changes, we refuse rather than risk carrying them
-// across branches or losing track of them.
+// time, so before writing a post we make sure we're on the right one.
+//
+// Only *tracked* modifications block the switch. Untracked files must not:
+// the images for the post being published are themselves untracked at this
+// point (they were just uploaded into public/images/blog), so blocking on
+// them would make every cross-branch publish fail. Git carries untracked
+// files across a checkout untouched, and if one would be clobbered by the
+// target branch, checkout fails loudly and we surface that below.
 async function ensureOnBranch(targetBranch) {
   const cur = await run('git', ['branch', '--show-current'])
   const currentBranch = cur.out.trim()
   if (currentBranch === targetBranch) return { switched: false, from: currentBranch }
 
   const status = await run('git', ['status', '--porcelain'])
-  if (status.out.trim()) {
+  const trackedChanges = status.out
+    .split('\n')
+    .filter(l => l.trim() && !l.startsWith('??'))
+  if (trackedChanges.length) {
     throw new Error(
-      `Local repo is on branch "${currentBranch}" with uncommitted changes, but this post belongs on "${targetBranch}". ` +
-      `Commit or stash those changes first, then try publishing again.`
+      `Local repo is on branch "${currentBranch}" with uncommitted changes to tracked files, but this post belongs on "${targetBranch}". ` +
+      `Commit or stash those changes first, then try publishing again.\n` +
+      trackedChanges.join('\n')
     )
   }
 
