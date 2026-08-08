@@ -129,7 +129,7 @@ async function streamClaude({ system, user, onDelta }) {
 
 // ── Route: generate (SSE) ───────────────────────────────────
 async function handleGenerate(req, res) {
-  const { topicHint = '', cover = null, body = [null, null], site = 'sanjog' } = JSON.parse((await readBody(req)).toString() || '{}')
+  let { topicHint = '', cover = null, body = [null, null], site = 'sanjog' } = JSON.parse((await readBody(req)).toString() || '{}')
   const profile = resolveProfile(site)
 
   res.writeHead(200, {
@@ -145,6 +145,23 @@ async function handleGenerate(req, res) {
     const today = todayISO()
     const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY
     const { existingTitles, internalLinkList } = getExistingPosts(profile.postsDir)
+
+    // A photo slot can still hold a path from an earlier post. If that post was
+    // published to the other site's branch, its image is committed there and a
+    // checkout back to this branch removes the file from disk — so the path now
+    // points at nothing. Drop those instead of writing a post that references a
+    // missing file (or, worse, another site's photo under invented alt text).
+    const onDisk = p => !p || existsSync(join(ROOT_DIR, 'public' + p))
+    if (!onDisk(cover)) {
+      sse('status', { msg: 'Ignoring a stale cover image from an earlier post' })
+      cover = null
+    }
+    for (let i = 0; i < 2; i++) {
+      if (!onDisk(body[i])) {
+        sse('status', { msg: `Ignoring a stale body image ${i + 1} from an earlier post` })
+        body[i] = null
+      }
+    }
 
     // Resolve the 2 body images: uploaded path wins; else Unsplash fallback.
     const fallbackQueries = profile.fallbackBodyQueries

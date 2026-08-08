@@ -219,6 +219,21 @@ document.querySelectorAll('.drop').forEach(drop => {
   drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); handleFile(e.dataTransfer.files[0]); });
 });
 
+// Uploaded photos belong to one post only. Without this reset the slots keep
+// their paths after publishing, and the next post silently inherits them — that
+// put a plastic-surgery photo from a BBL post (with invented "ultrasound
+// machine" alt text) into a gynaecology article on the other site. Worse, once
+// the previous post is committed to its own branch, switching back deletes the
+// file from disk, so the inherited path points at nothing.
+function clearAllSlots(){
+  Object.keys(uploads).forEach(k => { uploads[k] = null });
+  document.querySelectorAll('.drop').forEach(drop => {
+    const img = drop.querySelector('img');
+    img.hidden = true; img.src = '';
+    drop.classList.remove('filled');
+  });
+}
+
 function setStatus(msg, spin=false){ $('#status').innerHTML = (spin?'<span class="spin"></span> ':'') + (msg||''); }
 function toast(msg, kind){ const t=$('#toast'); t.className='toast '+kind; t.innerHTML=msg; }
 
@@ -293,6 +308,7 @@ $('#publish').addEventListener('click', async () => {
     const j = await r.json();
     if (j.ok) {
       toast('✅ Published! Live shortly at <a href="'+j.liveUrl+'" target="_blank">'+j.liveUrl.replace('https://','')+'</a><br><span class="meta">Railway is deploying. Indexing pinged.</span>', 'ok');
+      clearAllSlots();
     } else {
       toast('⚠️ Publish failed: ' + (j.error||'') + (j.detail?('<br><span class="meta">'+j.detail+'</span>'):''), 'err');
     }
