@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Dr Sanjog — Blog Studio</title>
+<title>Blog Studio</title>
 <style>
   :root {
     --bg: #f4f1ec; --panel: #ffffff; --ink: #2b2b2b; --muted: #8a8578;
@@ -33,6 +33,7 @@
   textarea, input[type=text] { width:100%; border:1px solid var(--line); border-radius:10px;
     background:var(--bg); color:var(--ink); padding:11px 12px; font-size:14px; resize:vertical; }
   textarea:focus, input:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  #jsonBox { font: 12.5px/1.5 "SF Mono", ui-monospace, Menlo, monospace; }
   .drops { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:6px; }
   .drop { border:1.5px dashed var(--line); border-radius:11px; aspect-ratio:1/1;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -74,29 +75,30 @@
     border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; vertical-align:-2px; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .empty { color:var(--muted); font-size:13px; text-align:center; padding:60px 20px; }
+  .siteswitch { display:flex; gap:6px; background:var(--bg); border:1px solid var(--line);
+    border-radius:10px; padding:3px; margin-left:8px; }
+  .siteswitch button { border:0; background:transparent; color:var(--muted); font-size:12.5px;
+    font-weight:600; padding:6px 12px; border-radius:8px; cursor:pointer; }
+  .siteswitch button.active { background:var(--accent); color:var(--accent-ink); }
+  code { background:var(--bg); border:1px solid var(--line); border-radius:5px; padding:1px 5px; font-size:12px; }
 </style>
 </head>
 <body>
 <header>
   <span class="dot"></span>
-  <h1>Blog Studio · drsanjog.com</h1>
-  <span class="sub">local · review before publish</span>
+  <h1 id="siteTitle">Blog Studio</h1>
+  <div class="siteswitch" id="siteSwitch">
+    <button data-site="sanjog" class="active">Dr. Sanjog</button>
+    <button data-site="arti">Dr. Arti</button>
+  </div>
+  <span class="sub">local · no API keys · review before publish</span>
 </header>
 
 <main>
   <!-- LEFT: controls -->
   <section>
     <div class="card">
-      <label>Topic / direction <span class="hint">— suggested from your content rules</span></label>
-      <textarea id="topic" rows="4" placeholder="Loading a suggested topic…"></textarea>
-      <p class="hint" style="margin:8px 0 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <a href="#" id="reroll">↻ Suggest another</a>
-        <span>· Edit or replace it to steer the post. Clear the box to let Claude choose.</span>
-      </p>
-    </div>
-
-    <div class="card">
-      <label>Photos <span class="hint">— optional. Empty slots auto-fill from Unsplash.</span></label>
+      <label>Photos <span class="hint">— required. Cover + 2 body images, no auto-fill.</span></label>
       <div class="drops">
         <div class="drop" data-slot="cover">
           <button class="x" title="Remove">×</button>
@@ -114,7 +116,12 @@
           <img hidden>
         </div>
       </div>
-      <button class="primary" id="go">Generate post ▸</button>
+    </div>
+
+    <div class="card">
+      <label>Paste post JSON <span class="hint">— from your "Blog Post — Dr. Sanjog" Claude Project</span></label>
+      <textarea id="jsonBox" rows="14" placeholder='Paste the JSON Claude gave you here — starts with { "title": ...'></textarea>
+      <button class="primary" id="import">Import ▸</button>
       <div class="status" id="status"></div>
     </div>
   </section>
@@ -127,7 +134,7 @@
       <span class="grow"></span>
       <button class="ghost" id="toggleEdit" style="display:none">Edit ✎</button>
     </div>
-    <div id="stream"><div class="empty">Your post will stream in here as it's written.<br>Add a topic and photos on the left, then hit Generate.</div></div>
+    <div id="stream"><div class="empty">Upload the 3 photos on the left, paste the post JSON from your Claude Project, then hit Import.<br>The post appears here to review, edit, and publish.</div></div>
     <textarea id="editor" spellcheck="false"></textarea>
     <div class="actions" id="actions" style="display:none">
       <button class="primary" id="publish">Publish live ▸</button>
@@ -142,15 +149,38 @@ const $ = s => document.querySelector(s);
 const uploads = { cover:null, body0:null, body1:null };
 let currentMdx = '', currentSlug = '', editing = false;
 
-// ---- default topic suggestion (from the established content rules) ----
-async function fetchSuggestion(){
-  try { const r = await fetch('/api/suggest'); const j = await r.json(); return j.topic || ''; }
-  catch { return ''; }
+// ---- site selector: Dr. Sanjog Sharma vs Dr. Arti Sharma ----
+const SITE_LABELS = { sanjog: 'Blog Studio · drsanjog.com', arti: 'Blog Studio · drarti.in' };
+let currentSite = localStorage.getItem('blogStudioSite') || 'sanjog';
+
+function applySiteUI(){
+  $('#siteTitle').textContent = SITE_LABELS[currentSite];
+  document.querySelectorAll('#siteSwitch button').forEach(b => b.classList.toggle('active', b.dataset.site === currentSite));
 }
-(async () => { const t = await fetchSuggestion(); const box = $('#topic'); if (!box.value.trim()) box.value = t; })();
-$('#reroll').addEventListener('click', async e => { e.preventDefault(); const t = await fetchSuggestion(); if (t) $('#topic').value = t; });
+applySiteUI();
+
+document.querySelectorAll('#siteSwitch button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.site === currentSite) return;
+    currentSite = btn.dataset.site;
+    localStorage.setItem('blogStudioSite', currentSite);
+    applySiteUI();
+    // Switching doctor resets the current draft — a half-written post for
+    // one doctor shouldn't be published under the other.
+    currentMdx = ''; currentSlug = ''; editing = false;
+    $('#editor').style.display = 'none'; $('#stream').style.display = 'block';
+    $('#stream').innerHTML = '<div class="empty">Upload the 3 photos on the left, paste the post JSON from your Claude Project, then hit Import.<br>The post appears here to review, edit, and publish.</div>';
+    $('#ptitle').textContent = 'Draft'; $('#pslug').textContent = 'no post yet'; $('#pslug').className = 'badge';
+    $('#toggleEdit').style.display = 'none'; $('#actions').style.display = 'none';
+    $('#toast').className = 'toast';
+  });
+});
 
 // ---- photo drop slots ----
+function updateImportEnabled(){
+  $('#import').disabled = !(uploads.cover && uploads.body0 && uploads.body1);
+}
+
 document.querySelectorAll('.drop').forEach(drop => {
   const slot = drop.dataset.slot;
   const img = drop.querySelector('img');
@@ -159,7 +189,7 @@ document.querySelectorAll('.drop').forEach(drop => {
   drop.appendChild(fileInput);
 
   const setImg = (dataUrl) => { img.src = dataUrl; img.hidden = false; drop.classList.add('filled'); };
-  const clear = () => { uploads[slot] = null; img.hidden = true; img.src = ''; drop.classList.remove('filled'); };
+  const clear = () => { uploads[slot] = null; img.hidden = true; img.src = ''; drop.classList.remove('filled'); updateImportEnabled(); };
 
   async function handleFile(file) {
     if (!file || !file.type.startsWith('image/')) return;
@@ -171,6 +201,7 @@ document.querySelectorAll('.drop').forEach(drop => {
     const j = await r.json();
     uploads[slot] = j.path;
     setStatus('');
+    updateImportEnabled();
   }
 
   drop.addEventListener('click', e => { if (e.target.classList.contains('x')) return; fileInput.click(); });
@@ -180,45 +211,53 @@ document.querySelectorAll('.drop').forEach(drop => {
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
   drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); handleFile(e.dataTransfer.files[0]); });
 });
+updateImportEnabled();
+
+// Uploaded photos belong to one post only. Without this reset the slots keep
+// their paths after publishing, and the next post silently inherits them.
+function clearAllSlots(){
+  Object.keys(uploads).forEach(k => { uploads[k] = null });
+  document.querySelectorAll('.drop').forEach(drop => {
+    const img = drop.querySelector('img');
+    img.hidden = true; img.src = '';
+    drop.classList.remove('filled');
+  });
+  updateImportEnabled();
+}
 
 function setStatus(msg, spin=false){ $('#status').innerHTML = (spin?'<span class="spin"></span> ':'') + (msg||''); }
 function toast(msg, kind){ const t=$('#toast'); t.className='toast '+kind; t.innerHTML=msg; }
 
-// ---- generate (SSE over fetch stream) ----
-$('#go').addEventListener('click', async () => {
-  $('#go').disabled = true;
+// ---- import (paste JSON, no API call) ----
+$('#import').addEventListener('click', async () => {
+  let post;
+  try {
+    post = JSON.parse($('#jsonBox').value);
+  } catch (e) {
+    toast('⚠️ That\'s not valid JSON — paste exactly what Claude gave you.', 'err');
+    return;
+  }
+
+  $('#import').disabled = true;
   $('#toast').className = 'toast';
   $('#actions').style.display = 'none';
   $('#toggleEdit').style.display = 'none';
   editing = false; $('#editor').style.display='none'; $('#stream').style.display='block';
-  currentMdx = ''; $('#stream').textContent = '';
-  $('#ptitle').textContent = 'Writing…'; $('#pslug').textContent = '…'; $('#pslug').className='badge';
-  setStatus('Starting…', true);
+  $('#ptitle').textContent = 'Importing…'; $('#pslug').textContent = '…'; $('#pslug').className='badge';
+  setStatus('Assembling the post…', true);
 
-  const res = await fetch('/api/generate', { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ topicHint: $('#topic').value, cover: uploads.cover, body: [uploads.body0, uploads.body1] }) });
-
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = '';
-  const streamEl = $('#stream');
-
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream:true });
-    const parts = buf.split('\n\n'); buf = parts.pop();
-    for (const p of parts) {
-      const ev = (p.match(/^event: (.+)$/m)||[])[1];
-      const dm = p.match(/^data: (.+)$/m); if (!dm) continue;
-      const data = JSON.parse(dm[1]);
-      if (ev === 'status') setStatus(data.msg, true);
-      else if (ev === 'delta') { currentMdx += data.text; streamEl.textContent = currentMdx; streamEl.scrollTop = streamEl.scrollHeight; }
-      else if (ev === 'done') onDone(data);
-      else if (ev === 'failed') { setStatus(''); toast('⚠️ ' + data.error, 'err'); }
-    }
+  try {
+    const r = await fetch('/api/import', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ site: currentSite, cover: uploads.cover, body: [uploads.body0, uploads.body1], post }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Import failed');
+    onDone(j);
+  } catch (e) {
+    setStatus('');
+    $('#ptitle').textContent = 'Draft'; $('#pslug').textContent = 'no post yet'; $('#pslug').className = 'badge';
+    toast('⚠️ ' + e.message, 'err');
   }
-  $('#go').disabled = false;
+  updateImportEnabled();
 });
 
 function onDone(d){
@@ -251,10 +290,12 @@ $('#publish').addEventListener('click', async () => {
   toast('<span class="spin"></span> Publishing — writing MDX, git push, pinging indexing…', 'ok');
   try {
     const r = await fetch('/api/publish', { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ mdx, slug: currentSlug }) });
+      body: JSON.stringify({ mdx, slug: currentSlug, site: currentSite }) });
     const j = await r.json();
     if (j.ok) {
       toast('✅ Published! Live shortly at <a href="'+j.liveUrl+'" target="_blank">'+j.liveUrl.replace('https://','')+'</a><br><span class="meta">Railway is deploying. Indexing pinged.</span>', 'ok');
+      clearAllSlots();
+      $('#jsonBox').value = '';
     } else {
       toast('⚠️ Publish failed: ' + (j.error||'') + (j.detail?('<br><span class="meta">'+j.detail+'</span>'):''), 'err');
     }
