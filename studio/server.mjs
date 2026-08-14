@@ -3,42 +3,33 @@
  * Blog Studio — local-only server for blog.drsanjog.com
  *
  * A single-user desktop tool. Lets Dr. Sharma:
- *   • type a topic / steering note
- *   • upload his own cover + body photos (Unsplash fills any empty slot)
- *   • watch the post stream in live
+ *   • upload his own cover + 2 body photos
+ *   • paste a post as JSON (written by a Claude Project, not an API call)
  *   • review / edit, then Publish (writes MDX, git commit + push, pings indexing)
+ *
+ * No external API is called from here — no ANTHROPIC_API_KEY, no Unsplash.
+ * The post itself is composed by hand in a Claude Project and pasted in as JSON;
+ * this server only assembles it into MDX and does the git/publish plumbing.
  *
  * Runs ONLY on the local machine — never part of the Railway deployment.
  * Launch:  node studio/server.mjs   (or the "Blog Studio.command" launcher)
- *
- * Zero external dependencies — pure Node.
  */
 
 import http from 'http'
+import yaml from 'js-yaml'
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs'
 import { join, extname } from 'path'
 import { spawn } from 'child_process'
-import {
-  ROOT_DIR, IMAGES_DIR, MODEL, todayISO,
-  getExistingPosts, fetchUnsplashImage, resolveProfile, SITE_PROFILES,
-  buildSystemPrompt, buildUserMessage, buildBodyImageInstructions,
-  slugify, stripFences, forceDate, applyCover, deriveCoverAlt, upsertDateModified,
-  parseTitle, parseCoverQuery, suggestTopic,
-} from '../scripts/lib/blog-core.mjs'
+import { ROOT_DIR, IMAGES_DIR, todayISO, resolveProfile, SITE_PROFILES, slugify, forceDate, upsertDateModified } from '../scripts/lib/blog-core.mjs'
 
 const PORT = 4455
 const HERE = new URL('.', import.meta.url).pathname
 
-// ── Load .env.local into process.env (ANTHROPIC_API_KEY, UNSPLASH_ACCESS_KEY …)
-function loadEnv() {
-  const envPath = join(ROOT_DIR, '.env.local')
-  if (!existsSync(envPath)) return
-  for (const line of readFileSync(envPath, 'utf8').split('\n')) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/)
-    if (m) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '')
-  }
+const AUTHOR_BY_SITE = { sanjog: 'Dr. Sanjog Sharma', arti: 'Dr. Arti Sharma' }
+const COVER_ALT_SUFFIX_BY_SITE = {
+  sanjog: 'plastic surgery by Dr. Sanjog Sharma, Dubai and Bengaluru',
+  arti: 'obstetrics & gynaecology care by Dr. Arti Sharma, Bengaluru',
 }
-loadEnv()
 
 if (!existsSync(IMAGES_DIR)) mkdirSync(IMAGES_DIR, { recursive: true })
 
@@ -79,143 +70,89 @@ function saveUpload(dataUrl, originalName) {
   return `/images/blog/${name}`
 }
 
-// ── Claude streaming ────────────────────────────────────────
-async function streamClaude({ system, user, onDelta }) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 8000,
-      system,
-      stream: true,
-      messages: [{ role: 'user', content: user }],
-    }),
-  })
-
-  if (!res.ok || !res.body) {
-    const err = await res.text().catch(() => res.statusText)
-    throw new Error(`Claude API error ${res.status}: ${err}`)
-  }
-
-  let full = ''
-  let buffer = ''
-  const decoder = new TextDecoder()
-  for await (const chunk of res.body) {
-    buffer += decoder.decode(chunk, { stream: true })
-    const events = buffer.split('\n\n')
-    buffer = events.pop() // keep incomplete tail
-    for (const evt of events) {
-      const dataLine = evt.split('\n').find(l => l.startsWith('data:'))
-      if (!dataLine) continue
-      const payload = dataLine.slice(5).trim()
-      if (!payload || payload === '[DONE]') continue
-      let json
-      try { json = JSON.parse(payload) } catch { continue }
-      if (json.type === 'content_block_delta' && json.delta?.text) {
-        full += json.delta.text
-        onDelta(json.delta.text)
-      } else if (json.type === 'error') {
-        throw new Error(json.error?.message || 'stream error')
-      }
-    }
-  }
-  return full
+// Strip accidental ```json / ``` fences if the pasted text still has them.
+function stripFences(text) {
+  return text.trim().replace(/^```(?:json)?\n/, '').replace(/\n```$/, '').trim()
 }
 
-// ── Route: generate (SSE) ───────────────────────────────────
-async function handleGenerate(req, res) {
-  let { topicHint = '', cover = null, body = [null, null], site = 'sanjog' } = JSON.parse((await readBody(req)).toString() || '{}')
-  const profile = resolveProfile(site)
-
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    Connection: 'keep-alive',
-  })
-  const sse = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+// ── Route: import a Claude-authored post as JSON ────────────
+// Body shape: { site, cover, body: [body0, body1], post: {...} }
+// `post` is exactly what the Claude Project produced — see
+// studio/claude-project-prompt.md for the schema.
+async function handleImport(req, res) {
+  let payload
+  try {
+    payload = JSON.parse(stripFences((await readBody(req)).toString()))
+  } catch {
+    return sendJSON(res, 400, { ok: false, error: 'That request body was not valid JSON.' })
+  }
 
   try {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY missing in .env.local')
+    const { site = 'sanjog', cover = null, body: bodyImages = [null, null], post } = payload
+    const profile = resolveProfile(site)
 
-    const today = todayISO()
-    const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY
-    const { existingTitles, internalLinkList } = getExistingPosts(profile.postsDir)
+    if (!post || typeof post !== 'object') throw new Error('Missing "post" — paste the JSON Claude gave you into the box first.')
+    const {
+      title, seoTitle, description, targetKeyword, keywords, tags,
+      procedureName, procedureAlt, procedureBodyLocation, procedurePrep, procedureHow, procedureFollowup,
+      howToName, howToSteps, faqs, body: articleBody,
+    } = post
 
-    // A photo slot can still hold a path from an earlier post. If that post was
-    // published to the other site's branch, its image is committed there and a
-    // checkout back to this branch removes the file from disk — so the path now
-    // points at nothing. Drop those instead of writing a post that references a
-    // missing file (or, worse, another site's photo under invented alt text).
-    const onDisk = p => !p || existsSync(join(ROOT_DIR, 'public' + p))
-    if (!onDisk(cover)) {
-      sse('status', { msg: 'Ignoring a stale cover image from an earlier post' })
-      cover = null
-    }
-    for (let i = 0; i < 2; i++) {
-      if (!onDisk(body[i])) {
-        sse('status', { msg: `Ignoring a stale body image ${i + 1} from an earlier post` })
-        body[i] = null
-      }
+    if (!title) throw new Error('The pasted post has no "title".')
+    if (!description) throw new Error('The pasted post has no "description".')
+    if (!articleBody) throw new Error('The pasted post has no "body".')
+    if (!Array.isArray(faqs) || !faqs.length) throw new Error('The pasted post has no "faqs".')
+
+    if (!cover) throw new Error('Upload a cover photo before importing.')
+    if (!bodyImages[0] || !bodyImages[1]) throw new Error('Upload both body photos before importing.')
+    for (const p of [cover, bodyImages[0], bodyImages[1]]) {
+      if (!existsSync(join(ROOT_DIR, 'public' + p))) throw new Error(`Uploaded image missing on disk: ${p}`)
     }
 
-    // Resolve the 2 body images: uploaded path wins; else Unsplash fallback.
-    const fallbackQueries = profile.fallbackBodyQueries
-    const bodyImages = []
-    for (let i = 0; i < 2; i++) {
-      if (body[i]) {
-        bodyImages.push({ url: body[i], credit: `provided by ${profile.label.split(' — ')[0]}` })
-        sse('status', { msg: `Using your uploaded body image ${i + 1}` })
-      } else {
-        sse('status', { msg: `Fetching a stock body image ${i + 1} from Unsplash…` })
-        const img = await fetchUnsplashImage(fallbackQueries[i], UNSPLASH_KEY)
-        bodyImages.push(img)
-      }
+    let articleMdx = articleBody
+      .replace(/\{\{BODY_IMAGE_1\}\}/g, bodyImages[0])
+      .replace(/\{\{BODY_IMAGE_2\}\}/g, bodyImages[1])
+    if (articleMdx.includes('{{')) {
+      throw new Error('The pasted body still has an unresolved {{…}} placeholder — it must use exactly {{BODY_IMAGE_1}} and {{BODY_IMAGE_2}}.')
     }
 
-    const bodyImageInstructions = buildBodyImageInstructions(bodyImages)
-    const system = buildSystemPrompt(today, site)
-    const user = buildUserMessage({ existingTitles, internalLinkList, bodyImageInstructions, topicHint, site })
+    const coverAlt = `Clinical reference image for ${procedureName || title} — ${COVER_ALT_SUFFIX_BY_SITE[profile.key] || COVER_ALT_SUFFIX_BY_SITE.sanjog}`.replace(/"/g, "'")
 
-    sse('status', { msg: 'Generating the post with Claude…' })
-    let mdx = await streamClaude({ system, user, onDelta: text => sse('delta', { text }) })
+    const frontmatter = {
+      title,
+      ...(seoTitle ? { seoTitle } : {}),
+      description,
+      date: todayISO(),
+      ...(targetKeyword ? { targetKeyword } : {}),
+      ...(Array.isArray(keywords) && keywords.length ? { keywords } : {}),
+      author: AUTHOR_BY_SITE[profile.key] || AUTHOR_BY_SITE.sanjog,
+      ...(Array.isArray(tags) && tags.length ? { tags } : {}),
+      coverImage: cover,
+      coverImageAlt: coverAlt,
+      ...(procedureName ? { procedureName } : {}),
+      ...(procedureAlt ? { procedureAlt } : {}),
+      ...(procedureBodyLocation ? { procedureBodyLocation } : {}),
+      ...(procedurePrep ? { procedurePrep } : {}),
+      ...(procedureHow ? { procedureHow } : {}),
+      ...(procedureFollowup ? { procedureFollowup } : {}),
+      ...(howToName ? { howToName } : {}),
+      ...(Array.isArray(howToSteps) && howToSteps.length ? { howToSteps } : {}),
+      faqs,
+    }
 
-    // Finalize
-    mdx = forceDate(stripFences(mdx), today)
-    const title = parseTitle(mdx)
-    if (!title) throw new Error('Generated content had no title')
+    const fm = yaml.dump(frontmatter, { lineWidth: -1, noRefs: true })
+    const mdx = `---\n${fm}---\n\n${articleMdx.trim()}\n`
+
     const slug = slugify(title)
-
-    // Resolve cover: uploaded wins; else Unsplash on the model's suggested query.
-    // Alt text is always derived from the procedure — never a generic stock caption.
-    const coverAlt = deriveCoverAlt(mdx, site)
-    let coverForFm
-    if (cover) {
-      coverForFm = { url: cover, alt: coverAlt, credit: '' }
-      sse('status', { msg: 'Using your uploaded cover image' })
-    } else {
-      const q = parseCoverQuery(mdx, profile.fallbackCoverQuery)
-      sse('status', { msg: `Fetching cover image from Unsplash: "${q}"…` })
-      const c = await fetchUnsplashImage(q, UNSPLASH_KEY)
-      coverForFm = c ? { url: c.url, alt: coverAlt, credit: `${c.credit} / Unsplash` } : null
-    }
-    mdx = applyCover(mdx, coverForFm)
-
     const exists = existsSync(join(profile.postsDir, `${slug}.mdx`))
-    sse('done', {
-      mdx, slug, title,
-      exists,
-      coverUrl: coverForFm?.url ?? null,
+
+    sendJSON(res, 200, {
+      ok: true, mdx, slug, title, exists,
+      coverUrl: cover,
       liveUrl: `${profile.siteUrl}/blog/${slug}`,
     })
   } catch (e) {
-    sse('failed', { error: e.message })
-  } finally {
-    res.end()
+    sendJSON(res, 400, { ok: false, error: e.message })
   }
 }
 
@@ -315,10 +252,14 @@ async function handlePublish(req, res) {
 
     const outPath = join(profile.postsDir, `${slug}.mdx`)
     // Re-publishing an existing slug is an edit → stamp dateModified with today
-    // (keeps the original datePublished). New posts keep publish date only.
+    // (keeps the original datePublished). A brand-new post may have been
+    // imported days before it's actually published, so its date is forced to
+    // today here rather than trusting whatever the import step wrote.
     const isEdit = existsSync(outPath)
-    let finalMdx = forceDate(mdx.trim(), todayISO())
-    if (isEdit) finalMdx = upsertDateModified(finalMdx, todayISO())
+    const today = todayISO()
+    let finalMdx = isEdit
+      ? upsertDateModified(mdx.trim(), today)
+      : forceDate(mdx.trim(), today)
     finalMdx += '\n'
     writeFileSync(outPath, finalMdx, 'utf8')
 
@@ -376,18 +317,12 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       return res.end(html)
     }
-    if (req.method === 'GET' && req.url.startsWith('/api/suggest')) {
-      const site = new URL(req.url, `http://x`).searchParams.get('site') || 'sanjog'
-      const profile = resolveProfile(site)
-      const { existingTitles } = getExistingPosts(profile.postsDir)
-      return sendJSON(res, 200, { topic: suggestTopic(existingTitles, site) })
-    }
     if (req.method === 'POST' && req.url === '/api/upload') {
       const { dataUrl, filename } = JSON.parse((await readBody(req)).toString() || '{}')
       return sendJSON(res, 200, { path: saveUpload(dataUrl, filename) })
     }
-    if (req.method === 'POST' && req.url === '/api/generate') {
-      return handleGenerate(req, res)
+    if (req.method === 'POST' && req.url === '/api/import') {
+      return handleImport(req, res)
     }
     if (req.method === 'POST' && req.url === '/api/publish') {
       return handlePublish(req, res)
@@ -402,8 +337,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   const url = `http://localhost:${PORT}`
   console.log(`\n  🩺  Blog Studio running at ${url}\n`)
-  console.log(`  ANTHROPIC_API_KEY : ${process.env.ANTHROPIC_API_KEY ? 'loaded ✓' : 'MISSING ✗'}`)
-  console.log(`  UNSPLASH_ACCESS_KEY: ${process.env.UNSPLASH_ACCESS_KEY ? 'loaded ✓' : 'missing (uploads only)'}\n`)
+  console.log(`  No API keys needed — paste a post as JSON from your Claude Project, then review and publish.\n`)
   // Best-effort: open the browser (macOS)
   spawn('open', [url]).on('error', () => {})
 })
