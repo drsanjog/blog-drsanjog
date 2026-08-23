@@ -338,6 +338,8 @@ server.listen(PORT, () => {
   const url = `http://localhost:${PORT}`
   console.log(`\n  🩺  Blog Studio running at ${url}\n`)
   console.log(`  No API keys needed — paste a post as JSON from your Claude Project, then review and publish.\n`)
-  // Best-effort: open the browser (macOS)
-  spawn('open', [url]).on('error', () => {})
+  // Best-effort: open the browser (macOS). Skipped when something else is
+  // already responsible for the tab — the .command launcher opens it via
+  // clinic-hub/bin/open-url.sh, and the hub opens it when you press Open.
+  if (process.env.BLOG_STUDIO_NO_OPEN !== '1') spawn('open', [url]).on('error', () => {})
 })

@@ -30,7 +30,7 @@ fi
 # Start detached and exit. Holding the foreground keeps this Terminal window on
 # top of the browser, so the tab opens behind it and looks like nothing happened.
 mkdir -p logs
-nohup node studio/server.mjs >> logs/_studio.log 2>&1 &
+BLOG_STUDIO_NO_OPEN=1 nohup node studio/server.mjs >> logs/_studio.log 2>&1 &
 disown
 
 for i in {1..60}; do
